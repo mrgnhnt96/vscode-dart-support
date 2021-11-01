@@ -1,0 +1,121 @@
+{
+  "name": "dart-build-runner",
+  "displayName": "Dart build_runner",
+  "description": "Dart build_runner tools in VSCode.",
+  "publisher": "mrgnhnt96",
+  "version": "1.0.6",
+  "engines": {
+    "vscode": "^1.55.0"
+  },
+  "repository": "https://github.com/mrgnhnt96/vscode-dart-build-runner",
+  "extensionDependencies": [
+    "Dart-Code.dart-code"
+  ],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "flutter",
+    "dart",
+    "build",
+    "build_runner",
+    "generate"
+  ],
+  "activationEvents": [
+    "onLanguage:dart",
+    "workspaceContains:**/pubspec.yaml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "category": "dart-build-runner",
+        "command": "dart-build-runner.build",
+        "title": "build",
+        "icon": "$(play)"
+      },
+      {
+        "category": "dart-build-runner",
+        "command": "dart-build-runner.watch",
+        "title": "watch",
+        "icon": "$(server)"
+      },
+      {
+        "category": "dart-build-runner",
+        "command": "dart-build-runner.terminate",
+        "title": "terminate",
+        "icon": "$(debug-stop)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "dart-build-runner.watch",
+          "when": "false"
+        },
+        {
+          "command": "dart-build-runner.build",
+          "when": "false"
+        },
+        {
+          "command": "dart-build-runner.terminate",
+          "when": "false"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "dart-build-runner.watch",
+          "when": "view == build_runner_view && viewItem == file",
+          "group": "inline"
+        },
+        {
+          "command": "dart-build-runner.build",
+          "when": "view == build_runner_view && viewItem == file",
+          "group": "inline"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "dart-build-runner-view",
+          "name": "BUILD RUNNER - PROJECTS"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "publish": "vsce publish",
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "test-compile": "tsc -p ./",
+    "test-watch": "tsc -watch -p ./",
+    "pretest": "npm run test-compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.1.3",
+    "@types/mocha": "^8.2.2",
+    "@types/node": "^14.14.37",
+    "@types/vscode": "^1.61.0",
+    "@typescript-eslint/eslint-plugin": "^4.22.0",
+    "@typescript-eslint/parser": "^4.22.0",
+    "eslint": "^7.24.0",
+    "glob": "^7.1.6",
+    "mocha": "^8.3.2",
+    "prettier": "^2.2.1",
+    "ts-loader": "^8.1.0",
+    "typescript": "^4.2.4",
+    "vsce": "^1.87.1",
+    "vscode-test": "^1.5.2",
+    "webpack": "^5.31.2",
+    "webpack-cli": "^4.6.0"
+  },
+  "dependencies": {
+    "pidtree": "^0.5.0",
+    "yaml": "^1.10.2"
+  }
+}
