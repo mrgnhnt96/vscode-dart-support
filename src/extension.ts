@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { Process } from "./process";
-import { scanFile as scanWorkspaceForPubspecs } from "./scanFile";
+import { scanFile as scanWorkspaceForPubspecs } from "./scan_file";
 import { NestTreeItem, NestTreeProvider } from "./tree";
 import { BuildType } from "./models/enums";
 import { addSetting } from "./helpers/vscode_helper";

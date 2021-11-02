@@ -18,7 +18,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.deactivate = exports.setPubspecSettings = exports.activate = void 0;
 const vscode = __webpack_require__(1);
 const process_1 = __webpack_require__(2);
-const scanFile_1 = __webpack_require__(14);
+const scan_file_1 = __webpack_require__(14);
 const tree_1 = __webpack_require__(23);
 const enums_1 = __webpack_require__(24);
 const vscode_helper_1 = __webpack_require__(26);
@@ -63,7 +63,7 @@ function activate(context) {
 exports.activate = activate;
 function loadFiles() {
     return __awaiter(this, void 0, void 0, function* () {
-        const nestList = yield (0, scanFile_1.scanFile)();
+        const nestList = yield (0, scan_file_1.scanFile)();
         console.log("all pubspec", nestList);
         tree_1.NestTreeProvider.instance.setTreeList(nestList);
         setPubspecSettings({});
