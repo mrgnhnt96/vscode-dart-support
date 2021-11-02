@@ -36,11 +36,15 @@ function activate(context) {
         register(`${packageName}.clean-build`, (args) => process_1.Process.instance.runBuildRunner(args, enums_1.BuildType.clean));
         register(`${packageName}.watch`, (args) => process_1.Process.instance.runBuildRunner(args, enums_1.BuildType.watch));
         register(`${packageName}.get-dependencies`, (args) => {
+            // triggered by the view
+            if (args === undefined) {
+                return process_1.Process.instance.runGetAllDependencies();
+            }
             if (args.contextValue.includes("file")) {
                 process_1.Process.instance.runGetDependencies(args);
             }
-            else {
-                process_1.Process.instance.runGetAllDependencies();
+            else if (args.contextValue.includes("dir")) {
+                process_1.Process.instance.runGetChildrenDependencies(args);
             }
         });
         register(`${packageName}.upgrade-dependencies`, (args) => process_1.Process.instance.runUpgradeDependencies(args));
@@ -120,6 +124,7 @@ const tree_1 = __webpack_require__(23);
 const util_1 = __webpack_require__(6);
 const pidtree = __webpack_require__(7);
 const path = __webpack_require__(25);
+const remove_duplicates_1 = __webpack_require__(27);
 class Process {
     constructor() {
         this.processes = {};
@@ -155,7 +160,27 @@ class Process {
     runGetAllDependencies() {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ["pub", "get"];
-            const uris = tree_1.NestTreeProvider.instance.uris;
+            const uris = (0, remove_duplicates_1.removeDuplicates)(tree_1.NestTreeProvider.instance.uris);
+            const getTitle = (uri) => {
+                return uri.split(path.sep).pop();
+            };
+            const details = uris.map((uri) => {
+                const data = {
+                    title: getTitle(uri),
+                    uri: uri,
+                };
+                return data;
+            });
+            const promises = details.map((data) => {
+                return this.create(data, args, (message) => (message.includes("Succeeded after") ? true : false), true);
+            });
+            yield Promise.all(promises);
+        });
+    }
+    runGetChildrenDependencies(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ["pub", "get"];
+            const uris = (0, remove_duplicates_1.removeDuplicates)(tree_1.NestTreeProvider.instance.getUrisOf(data));
             const getTitle = (uri) => {
                 return uri.split(path.sep).pop();
             };
@@ -7557,6 +7582,14 @@ const recurse = (data) => {
 class NestTreeProvider {
     constructor() {
         this._uris = [];
+        this.getDirPath = (uri) => {
+            const dir = uri.fsPath;
+            const pubspecStr = `${path.sep}pubspec.yaml`;
+            if (dir.endsWith(pubspecStr)) {
+                return dir.slice(0, dir.length - pubspecStr.length);
+            }
+            return dir;
+        };
         this.uris = this._uris;
         this.eventEmitter = new vscode.EventEmitter();
         this.refresh = () => this.eventEmitter.fire();
@@ -7570,27 +7603,27 @@ class NestTreeProvider {
         (_a = this._instance) !== null && _a !== void 0 ? _a : (this._instance = new NestTreeProvider());
         return this._instance;
     }
+    getUrisOf(item) {
+        var _a;
+        const childrenDirs = [];
+        (_a = item.children) === null || _a === void 0 ? void 0 : _a.forEach((e) => {
+            childrenDirs.push(...this.getUrisOf(e));
+        });
+        return [this.getDirPath(item.resourceUri), ...childrenDirs];
+    }
     setTreeList(list) {
         this.treeList = list
             .sort((a, b) => (a.name > b.name ? 1 : -1))
             .map((e) => recurse(e));
-        const getDirPath = (uri) => {
-            const dir = uri.fsPath;
-            const pubspecStr = `${path.sep}pubspec.yaml`;
-            if (dir.endsWith(pubspecStr)) {
-                return dir.slice(0, dir.length - pubspecStr.length);
-            }
-            return dir;
-        };
         const children = [];
         list.forEach((nest) => {
             var _a;
-            this._uris.push(getDirPath(nest.uri));
+            this._uris.push(this.getDirPath(nest.uri));
             children.push(...((_a = nest === null || nest === void 0 ? void 0 : nest.children) !== null && _a !== void 0 ? _a : []));
         });
         const filesWithBuildRunner = [];
         children.forEach((child) => {
-            const path = getDirPath(child.uri);
+            const path = this.getDirPath(child.uri);
             this._uris.push(path);
             if (child.hasBuildRunnerDep) {
                 filesWithBuildRunner.push(`file-${child.name}`);
@@ -7666,6 +7699,31 @@ function addSetting(key, value) {
     return vscode.commands.executeCommand("setContext", key, value);
 }
 exports.addSetting = addSetting;
+
+
+/***/ }),
+/* 27 */
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.removeDuplicates = void 0;
+function removeDuplicates(arg) {
+    var temp = new Array();
+    label: for (var i = 0; i < arg.length; i++) {
+        for (var j = 0; j < temp.length; j++) {
+            //check duplicates
+            if (temp[j] === arg[i]) {
+                //skip if already present
+                continue label;
+            }
+        }
+        temp[temp.length] = arg[i];
+    }
+    return temp;
+}
+exports.removeDuplicates = removeDuplicates;
 
 
 /***/ })

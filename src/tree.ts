@@ -28,29 +28,39 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
 
   private _uris: string[] = [];
 
+  private getDirPath = (uri: vscode.Uri) => {
+    const dir = uri.fsPath;
+
+    const pubspecStr = `${path.sep}pubspec.yaml`;
+
+    if (dir.endsWith(pubspecStr)) {
+      return dir.slice(0, dir.length - pubspecStr.length);
+    }
+
+    return dir;
+  };
+
   readonly uris = this._uris;
+
+  getUrisOf(item: NestTreeItem): string[] {
+    const childrenDirs: string[] = [];
+
+    item.children?.forEach((e) => {
+      childrenDirs.push(...this.getUrisOf(e));
+    });
+
+    return [this.getDirPath(item.resourceUri), ...childrenDirs];
+  }
 
   setTreeList(list: TreeModel[]) {
     this.treeList = list
       .sort((a, b) => (a.name > b.name ? 1 : -1))
       .map((e) => recurse(e));
 
-    const getDirPath = (uri: vscode.Uri) => {
-      const dir = uri.fsPath;
-
-      const pubspecStr = `${path.sep}pubspec.yaml`;
-
-      if (dir.endsWith(pubspecStr)) {
-        return dir.slice(0, dir.length - pubspecStr.length);
-      }
-
-      return dir;
-    };
-
     const children: TreeModel[] = [];
 
     list.forEach((nest) => {
-      this._uris.push(getDirPath(nest.uri));
+      this._uris.push(this.getDirPath(nest.uri));
 
       children.push(...(nest?.children ?? []));
     });
@@ -58,7 +68,7 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
     const filesWithBuildRunner: string[] = [];
 
     children.forEach((child) => {
-      const path = getDirPath(child.uri);
+      const path = this.getDirPath(child.uri);
       this._uris.push(path);
 
       if (child.hasBuildRunnerDep) {

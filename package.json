@@ -138,9 +138,14 @@
       ],
       "view/title": [
         {
+          "command": "dart-build-runner.get-dependencies",
+          "when": "view == dbr-view",
+          "group": "navigation@1"
+        },
+        {
           "command": "dart-build-runner.refresh",
           "when": "view == dbr-view",
-          "group": "navigation"
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [

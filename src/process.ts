@@ -10,6 +10,7 @@ import { createLoading, createOutput, LoadingTask, OutputTask } from "./util";
 
 import pidtree = require("pidtree");
 import path = require("path");
+import { removeDuplicates } from "./helpers/remove_duplicates";
 
 interface Processes {
   [key: string]: childProcess.ChildProcess;
@@ -66,7 +67,37 @@ export class Process {
   async runGetAllDependencies() {
     const args = ["pub", "get"];
 
-    const uris = NestTreeProvider.instance.uris;
+    const uris = removeDuplicates(NestTreeProvider.instance.uris);
+
+    const getTitle = (uri: string) => {
+      return uri.split(path.sep).pop()!;
+    };
+
+    const details = uris.map((uri) => {
+      const data: ProcessData = {
+        title: getTitle(uri),
+        uri: uri,
+      };
+
+      return data;
+    });
+
+    const promises = details.map((data) => {
+      return this.create(
+        data,
+        args,
+        (message) => (message.includes("Succeeded after") ? true : false),
+        true
+      );
+    });
+
+    await Promise.all(promises);
+  }
+
+  async runGetChildrenDependencies(data: NestTreeItem) {
+    const args = ["pub", "get"];
+
+    const uris = removeDuplicates(NestTreeProvider.instance.getUrisOf(data));
 
     const getTitle = (uri: string) => {
       return uri.split(path.sep).pop()!;

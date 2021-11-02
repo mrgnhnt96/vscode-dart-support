@@ -36,13 +36,21 @@ export async function activate(context: vscode.ExtensionContext) {
     Process.instance.runBuildRunner(args, BuildType.watch)
   );
 
-  register(`${packageName}.get-dependencies`, (args: NestTreeItem) => {
-    if (args.contextValue.includes("file")) {
-      Process.instance.runGetDependencies(args);
-    } else {
-      Process.instance.runGetAllDependencies();
+  register(
+    `${packageName}.get-dependencies`,
+    (args: NestTreeItem | undefined) => {
+      // triggered by the view
+      if (args === undefined) {
+        return Process.instance.runGetAllDependencies();
+      }
+
+      if (args.contextValue.includes("file")) {
+        Process.instance.runGetDependencies(args);
+      } else if (args.contextValue.includes("dir")) {
+        Process.instance.runGetChildrenDependencies(args);
+      }
     }
-  });
+  );
 
   register(`${packageName}.upgrade-dependencies`, (args: NestTreeItem) =>
     Process.instance.runUpgradeDependencies(args)
