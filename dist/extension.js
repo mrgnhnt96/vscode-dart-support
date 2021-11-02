@@ -15,12 +15,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.deactivate = exports.setSettings = exports.activate = void 0;
+exports.deactivate = exports.setPubspecSettings = exports.activate = void 0;
 const vscode = __webpack_require__(1);
 const process_1 = __webpack_require__(2);
 const scanFile_1 = __webpack_require__(14);
 const tree_1 = __webpack_require__(23);
 const enums_1 = __webpack_require__(24);
+const vscode_helper_1 = __webpack_require__(26);
 const packageName = "dart-build-runner";
 function activate(context) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -32,26 +33,35 @@ function activate(context) {
         register(`${packageName}.build`, (args) => process_1.Process.instance.create(args, enums_1.BuildType.build));
         register(`${packageName}.watch`, (args) => process_1.Process.instance.create(args, enums_1.BuildType.watch));
         register(`${packageName}.terminate`, (args) => process_1.Process.instance.terminate(args));
-        const nestList = yield (0, scanFile_1.scanFile)();
-        console.log("all pubspec", nestList);
-        tree_1.NestTreeProvider.instance.setTreeList(nestList);
-        setSettings({});
+        register(`${packageName}.refresh`, () => {
+            tree_1.NestTreeProvider.instance.setTreeList([]);
+            loadFiles();
+        });
+        yield loadFiles();
     });
 }
 exports.activate = activate;
-function setSettings(arg) {
+function loadFiles() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const nestList = yield (0, scanFile_1.scanFile)();
+        console.log("all pubspec", nestList);
+        tree_1.NestTreeProvider.instance.setTreeList(nestList);
+        setPubspecSettings({});
+    });
+}
+function setPubspecSettings(arg) {
     const processes = Object.keys(arg).map((key) => key.slice(0, -1));
     var uris = tree_1.NestTreeProvider.instance.uris;
     uris = uris.filter((uri) => {
         return !processes.includes(uri);
     });
     console.log("uris", uris);
-    vscode.commands.executeCommand("setContext", "dbr.running", processes);
-    vscode.commands.executeCommand("setContext", "dbr.notRunning", uris);
-    console.log("processes", processes);
+    console.log("running", processes);
+    (0, vscode_helper_1.addSetting)("dbr.running", processes);
+    (0, vscode_helper_1.addSetting)("dbr.notRunning", uris);
     tree_1.NestTreeProvider.instance.refresh();
 }
-exports.setSettings = setSettings;
+exports.setPubspecSettings = setPubspecSettings;
 function deactivate() { }
 exports.deactivate = deactivate;
 
@@ -86,6 +96,7 @@ const os = __webpack_require__(5);
 const vscode = __webpack_require__(1);
 const util_1 = __webpack_require__(6);
 const extension_1 = __webpack_require__(0);
+const vscode_helper_1 = __webpack_require__(26);
 const pidtree = __webpack_require__(7);
 const path = __webpack_require__(25);
 class Process {
@@ -104,7 +115,7 @@ class Process {
             : uri.fsPath;
     }
     setContext() {
-        (0, extension_1.setSettings)(this.processes);
+        (0, extension_1.setPubspecSettings)(this.processes);
     }
     /**
      * Create the process
@@ -136,16 +147,6 @@ class Process {
                 if (!outputIsShow) {
                     return output.show();
                 }
-                const option = yield vscode.window.showWarningMessage(`The task 'build_runner:(${data.title})' is already active.`, "Terminate Task", "Restart Task");
-                if (option === "Terminate Task") {
-                    return yield this.terminate(data);
-                }
-                else if (option === "Restart Task") {
-                    yield this.terminate(data);
-                }
-                else {
-                    return;
-                }
             }
             output.activate();
             let _loading;
@@ -160,9 +161,11 @@ class Process {
             output.show();
             this.setContext();
             output.write(cwd);
-            output.write(["flutter", ...args].join(" "));
-            yield loading(["flutter", ...args].join(" "));
-            process = childProcess.spawn("flutter", args, {
+            const useFlutter = (0, vscode_helper_1.readSetting)("useFlutterForBuildRunner");
+            const command = useFlutter ? "flutter" : "dart";
+            output.write([command, ...args].join(" "));
+            yield loading([command, ...args].join(" "));
+            process = childProcess.spawn(command, args, {
                 cwd,
                 shell: os.platform() === "win32",
             });
@@ -791,10 +794,9 @@ const scanFile = () => __awaiter(void 0, void 0, void 0, function* () {
         }
         const pubspecObjsPromises = pubspecUris.map((uri) => readYaml(uri));
         const pubspecObjs = yield Promise.all(pubspecObjsPromises);
-        // TODO: build runner commands should show up only if build_runner exists
-        // add setting for reloading files (or listener for all pubspec.yaml files?)
-        // add setting to get all deps
+        // TODO: add setting to get all deps
         // add setting to upgrade all deps
+        // add setting to use dart or flutter
         //All pubspec.yaml that contain build runner
         const effectList = pubspecObjs.filter((e) => e !== null && e !== undefined);
         const ret = {
@@ -7475,7 +7477,6 @@ class NestTreeProvider {
         this.treeList = list
             .sort((a, b) => (a.name > b.name ? 1 : -1))
             .map((e) => recurse(e));
-        console.log("contextValue", this.treeList.map((e) => e.contextValue));
         const getDirPath = (uri) => {
             const path = uri.path;
             const pubspecStr = "/pubspec.yaml";
@@ -7549,6 +7550,25 @@ var BuildType;
 
 "use strict";
 module.exports = require("path");
+
+/***/ }),
+/* 26 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.addSetting = exports.readSetting = void 0;
+const vscode = __webpack_require__(1);
+function readSetting(key) {
+    return vscode.workspace.getConfiguration().get("dbr." + key);
+}
+exports.readSetting = readSetting;
+function addSetting(key, value) {
+    return vscode.commands.executeCommand("setContext", key, value);
+}
+exports.addSetting = addSetting;
+
 
 /***/ })
 /******/ 	]);
