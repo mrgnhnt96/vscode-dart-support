@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 
 export interface PubspecModel {
   name: string;
+  uri: vscode.Uri;
   dependencies: {
     [key: string]: Object | string;
   };

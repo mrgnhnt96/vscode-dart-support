@@ -38,7 +38,7 @@
         "category": "dart-build-runner",
         "command": "dart-build-runner.watch",
         "title": "watch",
-        "icon": "$(server)"
+        "icon": "$(sync)"
       },
       {
         "category": "dart-build-runner",
@@ -64,13 +64,18 @@
       ],
       "view/item/context": [
         {
-          "command": "dart-build-runner.watch",
-          "when": "view == build_runner_view && viewItem == file",
+          "command": "dart-build-runner.build",
+          "when": "view == dart-build-runner-view && viewItem == file && resourceDirname in dart-build-runner.notRunning",
           "group": "inline"
         },
         {
-          "command": "dart-build-runner.build",
-          "when": "view == build_runner_view && viewItem == file",
+          "command": "dart-build-runner.watch",
+          "when": "view == dart-build-runner-view && viewItem == file && resourceDirname in dart-build-runner.notRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dart-build-runner.terminate",
+          "when": "view == dart-build-runner-view && viewItem == file && resourceDirname in dart-build-runner.running",
           "group": "inline"
         }
       ]

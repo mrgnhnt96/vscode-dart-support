@@ -8,6 +8,9 @@ const readYaml = async (uri: vscode.Uri) => {
   let json: PubspecModel | null;
   try {
     json = yaml.parse(uint8Array.toString());
+    if (json !== null) {
+      json["uri"] = uri;
+    }
   } catch (error) {
     json = null;
   }
@@ -24,7 +27,7 @@ export const scanFile = async (): Promise<TreeModel[]> => {
 
   const effectListPromises = workspaces.map(async (workspace) => {
     const relativePattern = new vscode.RelativePattern(
-      workspace.uri,
+      workspace,
       "**/pubspec.yaml"
     );
 
@@ -33,7 +36,7 @@ export const scanFile = async (): Promise<TreeModel[]> => {
 
     for (var i = 0; i < pubspecUris.length; i++) {
       function containsPath(folder: string) {
-        return pubspecUris[i].fsPath.includes(
+        return pubspecUris[i]?.fsPath.includes(
           `${path.sep}${folder}${path.sep}`
         );
       }
@@ -44,7 +47,14 @@ export const scanFile = async (): Promise<TreeModel[]> => {
     }
 
     const pubspecObjsPromises = pubspecUris.map((uri) => readYaml(uri));
+
     const pubspecObjs = await Promise.all(pubspecObjsPromises);
+
+    // TODO: remove filter
+    // build runner commands should show up only if build_runner exists
+    // we will set a new setting for this
+
+    // TODO: add list of all pubspec.yaml files
 
     //All valid pubspec.yaml files
     const effectList = pubspecObjs.filter((e) => {
@@ -55,12 +65,12 @@ export const scanFile = async (): Promise<TreeModel[]> => {
     });
 
     const ret: TreeModel = {
-      name: workspace.name,
-      uri: workspace.uri,
+      name: workspace.name!,
+      uri: workspace.uri!,
       children: effectList.map((e, i) => {
         return {
           name: e!.name,
-          uri: pubspecUris[i],
+          uri: e!.uri,
         };
       }),
     };

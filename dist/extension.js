@@ -15,7 +15,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.deactivate = exports.activate = void 0;
+exports.deactivate = exports.setSettings = exports.activate = void 0;
 const vscode = __webpack_require__(1);
 const process_1 = __webpack_require__(2);
 const scanFile_1 = __webpack_require__(14);
@@ -29,19 +29,29 @@ function activate(context) {
         const register = (command, callback, thisArg) => {
             return context.subscriptions.push(vscode.commands.registerCommand(command, callback, thisArg));
         };
-        register(`${packageName}.${enums_1.BuildType.build}`, (args) => process_1.Process.instance.create(args, enums_1.BuildType.build));
-        register(`${packageName}.${enums_1.BuildType.watch}`, (args) => process_1.Process.instance.create(args, enums_1.BuildType.watch));
-        register(`${packageName}.${enums_1.BuildType.terminate}`, (args) => process_1.Process.instance.terminate(args));
+        register(`${packageName}.build`, (args) => process_1.Process.instance.create(args, enums_1.BuildType.build));
+        register(`${packageName}.watch`, (args) => process_1.Process.instance.create(args, enums_1.BuildType.watch));
+        register(`${packageName}.terminate`, (args) => process_1.Process.instance.terminate(args));
         const nestList = yield (0, scanFile_1.scanFile)();
-        const recurse = (data) => {
-            var _a;
-            return new tree_1.NestTreeItem(data.name, data.uri, (_a = data.children) === null || _a === void 0 ? void 0 : _a.map((e) => recurse(e)));
-        };
-        tree_1.NestTreeProvider.instance.treeList = nestList.map((e) => recurse(e));
-        tree_1.NestTreeProvider.instance.refresh();
+        console.log(nestList);
+        tree_1.NestTreeProvider.instance.setTreeList(nestList);
+        setSettings({});
     });
 }
 exports.activate = activate;
+function setSettings(arg) {
+    const processes = Object.keys(arg).map((key) => key.slice(0, -1));
+    var uris = tree_1.NestTreeProvider.instance.uris;
+    uris = uris.filter((uri) => {
+        return !processes.includes(uri);
+    });
+    console.log("uris", uris);
+    vscode.commands.executeCommand("setContext", "dart-build-runner.running", processes);
+    vscode.commands.executeCommand("setContext", "dart-build-runner.notRunning", uris);
+    console.log("processes", processes);
+    tree_1.NestTreeProvider.instance.refresh();
+}
+exports.setSettings = setSettings;
 function deactivate() { }
 exports.deactivate = deactivate;
 
@@ -75,7 +85,9 @@ const fs = __webpack_require__(4);
 const os = __webpack_require__(5);
 const vscode = __webpack_require__(1);
 const util_1 = __webpack_require__(6);
+const extension_1 = __webpack_require__(0);
 const pidtree = __webpack_require__(7);
+const path = __webpack_require__(25);
 class Process {
     constructor() {
         this.processes = {};
@@ -88,8 +100,11 @@ class Process {
     }
     getDirPath(uri) {
         return fs.statSync(uri.fsPath).isFile()
-            ? vscode.Uri.joinPath(uri, "../").fsPath
+            ? vscode.Uri.joinPath(uri, `..${path.sep}`).fsPath
             : uri.fsPath;
+    }
+    setContext() {
+        (0, extension_1.setSettings)(this.processes);
     }
     /**
      * Create the process
@@ -143,6 +158,7 @@ class Process {
                 }
             });
             output.show();
+            this.setContext();
             output.write(cwd);
             output.write(["flutter", ...args].join(" "));
             yield loading(["flutter", ...args].join(" "));
@@ -151,6 +167,7 @@ class Process {
                 shell: os.platform() === "win32",
             });
             this.processes[cwd] = process;
+            this.setContext();
             const getMessage = (value) => value.toString().split("\n").join(" ");
             (_b = process.stdout) === null || _b === void 0 ? void 0 : _b.on("data", (value) => __awaiter(this, void 0, void 0, function* () {
                 const message = getMessage(value);
@@ -175,6 +192,7 @@ class Process {
                 output === null || output === void 0 ? void 0 : output.write(`exit ${code}`);
                 output === null || output === void 0 ? void 0 : output.invalidate();
                 delete this.processes[cwd];
+                this.setContext();
                 console.log("this.processes[cwd]=" + this.processes[cwd]);
             }));
         });
@@ -741,6 +759,9 @@ const readYaml = (uri) => __awaiter(void 0, void 0, void 0, function* () {
     let json;
     try {
         json = yaml.parse(uint8Array.toString());
+        if (json !== null) {
+            json["uri"] = uri;
+        }
     }
     catch (error) {
         json = null;
@@ -756,12 +777,13 @@ const scanFile = () => __awaiter(void 0, void 0, void 0, function* () {
     // Workspace folders
     const workspaces = (_a = vscode.workspace.workspaceFolders) !== null && _a !== void 0 ? _a : [];
     const effectListPromises = workspaces.map((workspace) => __awaiter(void 0, void 0, void 0, function* () {
-        const relativePattern = new vscode.RelativePattern(workspace.uri, "**/pubspec.yaml");
+        const relativePattern = new vscode.RelativePattern(workspace, "**/pubspec.yaml");
         // List of all pubspec.yaml files
         const pubspecUris = yield vscode.workspace.findFiles(relativePattern);
         for (var i = 0; i < pubspecUris.length; i++) {
             function containsPath(folder) {
-                return pubspecUris[i].fsPath.includes(`${path.sep}${folder}${path.sep}`);
+                var _a;
+                return (_a = pubspecUris[i]) === null || _a === void 0 ? void 0 : _a.fsPath.includes(`${path.sep}${folder}${path.sep}`);
             }
             if (containsPath(".symlinks")) {
                 delete pubspecUris[i];
@@ -769,6 +791,10 @@ const scanFile = () => __awaiter(void 0, void 0, void 0, function* () {
         }
         const pubspecObjsPromises = pubspecUris.map((uri) => readYaml(uri));
         const pubspecObjs = yield Promise.all(pubspecObjsPromises);
+        // TODO: remove filter
+        // build runner commands should show up only if build_runner exists
+        // we will set a new setting for this
+        // TODO: add list of all pubspec.yaml files
         //All valid pubspec.yaml files
         const effectList = pubspecObjs.filter((e) => {
             var _a, _b;
@@ -781,7 +807,7 @@ const scanFile = () => __awaiter(void 0, void 0, void 0, function* () {
             children: effectList.map((e, i) => {
                 return {
                     name: e.name,
-                    uri: pubspecUris[i],
+                    uri: e.uri,
                 };
             }),
         };
@@ -7425,8 +7451,14 @@ exports.warnOptionDeprecation = warnOptionDeprecation;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.NestTreeItem = exports.NestTreeProvider = void 0;
 const vscode = __webpack_require__(1);
+const recurse = (data) => {
+    var _a;
+    return new NestTreeItem(data.name, data.uri, (_a = data.children) === null || _a === void 0 ? void 0 : _a.sort((a, b) => (a.name > b.name ? 1 : -1)).map((e) => recurse(e)));
+};
 class NestTreeProvider {
     constructor() {
+        this._uris = [];
+        this.uris = this._uris;
         this.eventEmitter = new vscode.EventEmitter();
         this.refresh = () => this.eventEmitter.fire();
         this.treeList = [];
@@ -7439,25 +7471,38 @@ class NestTreeProvider {
         (_a = this._instance) !== null && _a !== void 0 ? _a : (this._instance = new NestTreeProvider());
         return this._instance;
     }
+    setTreeList(list) {
+        this.treeList = list
+            .sort((a, b) => (a.name > b.name ? 1 : -1))
+            .map((e) => recurse(e));
+        const getDirPath = (uri) => uri.fsPath.slice(0, "/pubspec.yaml".length * -1);
+        list.forEach((nest) => {
+            var _a;
+            this._uris.push(getDirPath(nest.uri));
+            (_a = nest.children) === null || _a === void 0 ? void 0 : _a.forEach((child) => this.uris.push(getDirPath(child.uri)));
+        });
+        this.refresh();
+    }
 }
 exports.NestTreeProvider = NestTreeProvider;
 class NestTreeItem extends vscode.TreeItem {
     constructor(title, resourceUri, children) {
+        var _a;
         super(title, children ? vscode.TreeItemCollapsibleState.Expanded : undefined);
         this.title = title;
         this.resourceUri = resourceUri;
         this.children = children;
-        this.isDir = this.children ? "dir" : "file";
+        this.isDir = this.children ? true : false;
         this.contextValue = this.children ? "dir" : "file";
         //Commands when click on the tree map item
-        this.command = this.isDir === "file"
-            ? {
+        this.command = this.isDir
+            ? undefined
+            : {
                 title: "Open file",
                 command: "vscode.open",
                 arguments: [this.resourceUri],
-            }
-            : undefined;
-        this.tooltip = `${this.resourceUri.path}`;
+            };
+        this.tooltip = `${(_a = this.resourceUri) === null || _a === void 0 ? void 0 : _a.fsPath}`;
     }
 }
 exports.NestTreeItem = NestTreeItem;

@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
-import { TreeModel } from "./models/pubspec";
 import { Process } from "./process";
-import { scanFile } from "./scanFile";
+import { scanFile as scanWorkspaceForPubspecs } from "./scanFile";
 import { NestTreeItem, NestTreeProvider } from "./tree";
 import { BuildType } from "./models/enums";
 
@@ -25,27 +24,52 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   };
 
-  register(`${packageName}.${BuildType.build}`, (args: NestTreeItem) =>
+  register(`${packageName}.build`, (args: NestTreeItem) =>
     Process.instance.create(args, BuildType.build)
   );
-  register(`${packageName}.${BuildType.watch}`, (args: NestTreeItem) =>
+
+  register(`${packageName}.watch`, (args: NestTreeItem) =>
     Process.instance.create(args, BuildType.watch)
   );
-  register(`${packageName}.${BuildType.terminate}`, (args: NestTreeItem) =>
+
+  register(`${packageName}.terminate`, (args: NestTreeItem) =>
     Process.instance.terminate(args)
   );
 
-  const nestList = await scanFile();
+  const nestList = await scanWorkspaceForPubspecs();
 
-  const recurse = (data: TreeModel): NestTreeItem => {
-    return new NestTreeItem(
-      data.name,
-      data.uri,
-      data.children?.map((e) => recurse(e))
-    );
-  };
+  console.log(nestList);
 
-  NestTreeProvider.instance.treeList = nestList.map((e) => recurse(e));
+  NestTreeProvider.instance.setTreeList(nestList);
+
+  setSettings({});
+}
+
+export function setSettings(arg: { [key: string]: any }) {
+  const processes = Object.keys(arg).map((key) => key.slice(0, -1));
+
+  var uris = NestTreeProvider.instance.uris;
+
+  uris = uris.filter((uri) => {
+    return !processes.includes(uri);
+  });
+
+  console.log("uris", uris);
+
+  vscode.commands.executeCommand(
+    "setContext",
+    "dart-build-runner.running",
+    processes
+  );
+
+  vscode.commands.executeCommand(
+    "setContext",
+    "dart-build-runner.notRunning",
+    uris
+  );
+
+  console.log("processes", processes);
+
   NestTreeProvider.instance.refresh();
 }
 
