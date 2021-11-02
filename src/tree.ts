@@ -34,11 +34,6 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
       .sort((a, b) => (a.name > b.name ? 1 : -1))
       .map((e) => recurse(e));
 
-    console.log(
-      "contextValue",
-      this.treeList.map((e) => e.contextValue)
-    );
-
     const getDirPath = (uri: vscode.Uri) => {
       const path = uri.path;
 
