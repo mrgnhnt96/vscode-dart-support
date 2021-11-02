@@ -1,9 +1,24 @@
-# Change Log
+# [0.0.1] - [2021-11-01]
 
-All notable changes to the "dart-support" extension will be documented in this file.
+- Initial release.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## Features
 
-## [Unreleased]
+### pubspec.yaml pane
 
-- Initial release
+- run build runner
+  - watch
+  - build
+  - clear cache
+- get dependencies
+- update dependencies
+  - non-major
+  - major
+- open in terminal
+
+### Explorer pane
+
+- run build runner
+  - watch
+  - build
+  - clear cache
