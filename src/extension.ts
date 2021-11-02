@@ -38,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   register(`${packageName}.get-dependencies`, (args: NestTreeItem) => {
     if (args.contextValue.includes("file")) {
-      return Process.instance.runGetDependencies(args);
+      Process.instance.runGetDependencies(args);
     } else {
       Process.instance.runGetAllDependencies();
     }
@@ -81,7 +81,7 @@ async function loadFiles() {
 
 export function setPubspecSettings(arg: { [key: string]: any }) {
   const getContextValue = (key: string) => {
-    return "file-" + key.split(path.sep).reverse()[0];
+    return "file-" + key.split(path.sep).pop();
   };
 
   const running = Object.keys(arg).map((key) =>

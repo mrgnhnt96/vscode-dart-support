@@ -37,7 +37,7 @@ function activate(context) {
         register(`${packageName}.watch`, (args) => process_1.Process.instance.runBuildRunner(args, enums_1.BuildType.watch));
         register(`${packageName}.get-dependencies`, (args) => {
             if (args.contextValue.includes("file")) {
-                return process_1.Process.instance.runGetDependencies(args);
+                process_1.Process.instance.runGetDependencies(args);
             }
             else {
                 process_1.Process.instance.runGetAllDependencies();
@@ -67,7 +67,7 @@ function loadFiles() {
 }
 function setPubspecSettings(arg) {
     const getContextValue = (key) => {
-        return "file-" + key.split(path.sep).reverse()[0];
+        return "file-" + key.split(path.sep).pop();
     };
     const running = Object.keys(arg).map((key) => getContextValue(key.slice(0, -1)));
     var notRunning = tree_1.NestTreeProvider.instance.uris.map((e) => getContextValue(e));
@@ -155,9 +155,21 @@ class Process {
     runGetAllDependencies() {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ["pub", "get"];
-            // await this.create(data, args, (message) =>
-            //   message.includes("Succeeded after") ? true : false
-            // );
+            const uris = tree_1.NestTreeProvider.instance.uris;
+            const getTitle = (uri) => {
+                return uri.split(path.sep).pop();
+            };
+            const details = uris.map((uri) => {
+                const data = {
+                    title: getTitle(uri),
+                    uri: uri,
+                };
+                return data;
+            });
+            const promises = details.map((data) => {
+                return this.create(data, args, (message) => (message.includes("Succeeded after") ? true : false), true);
+            });
+            yield Promise.all(promises);
         });
     }
     runUpgradeDependencies(data) {
@@ -190,7 +202,7 @@ class Process {
      * @param type
      * @returns
      */
-    create(data, args = [], isFinished) {
+    create(data, args = [], isFinished, closeOnFinish = false) {
         var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
             const cwd = data.uri;
@@ -254,6 +266,11 @@ class Process {
                 yield loading(`exit ${code}`, true);
                 output === null || output === void 0 ? void 0 : output.write(`exit ${code}`);
                 output === null || output === void 0 ? void 0 : output.invalidate();
+                console.log("closing on finish?", closeOnFinish);
+                if (closeOnFinish) {
+                    console.log("closing!", cwd);
+                    output === null || output === void 0 ? void 0 : output.close();
+                }
                 delete this.processes[cwd];
                 this.setContext();
             }));
@@ -364,10 +381,14 @@ const createOutput = (title, onDispose) => __awaiter(void 0, void 0, void 0, fun
         id: id,
         show: terminal.show,
         hide: terminal.hide,
-        close: pty.close,
+        close: () => {
+            pty.close();
+            terminal.dispose();
+        },
         isShow,
         write: (value) => {
-            return (!invalid && writeEmitter.fire(value.replace(/   /g, "\r\n  ") + "\r\n"));
+            return (!invalid &&
+                writeEmitter.fire(value.replace(/^   \w/g, "\r\n  ") + "\r\n"));
         },
         activate: () => (invalid = false),
         invalidate: () => {

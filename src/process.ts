@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import { setPubspecSettings } from "./extension";
 import { readSetting } from "./helpers/vscode_helper";
 import { BuildType } from "./models/enums";
-import { NestTreeItem } from "./tree";
+import { NestTreeItem, NestTreeProvider } from "./tree";
 import { createLoading, createOutput, LoadingTask, OutputTask } from "./util";
 
 import pidtree = require("pidtree");
@@ -66,9 +66,31 @@ export class Process {
   async runGetAllDependencies() {
     const args = ["pub", "get"];
 
-    // await this.create(data, args, (message) =>
-    //   message.includes("Succeeded after") ? true : false
-    // );
+    const uris = NestTreeProvider.instance.uris;
+
+    const getTitle = (uri: string) => {
+      return uri.split(path.sep).pop()!;
+    };
+
+    const details = uris.map((uri) => {
+      const data: ProcessData = {
+        title: getTitle(uri),
+        uri: uri,
+      };
+
+      return data;
+    });
+
+    const promises = details.map((data) => {
+      return this.create(
+        data,
+        args,
+        (message) => (message.includes("Succeeded after") ? true : false),
+        true
+      );
+    });
+
+    await Promise.all(promises);
   }
 
   async runUpgradeDependencies(data: NestTreeItem) {
@@ -114,7 +136,8 @@ export class Process {
   private async create(
     data: ProcessData,
     args: string[] = [],
-    isFinished: (message: string) => boolean
+    isFinished: (message: string) => boolean,
+    closeOnFinish: boolean = false
   ) {
     const cwd = data.uri;
 
@@ -209,6 +232,12 @@ export class Process {
       output?.write(`exit ${code}`);
 
       output?.invalidate();
+
+      console.log("closing on finish?", closeOnFinish);
+      if (closeOnFinish) {
+        console.log("closing!", cwd);
+        output?.close();
+      }
 
       delete this.processes[cwd];
 

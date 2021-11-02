@@ -57,11 +57,15 @@ export const createOutput = async (
     id: id,
     show: terminal.show,
     hide: terminal.hide,
-    close: pty.close,
+    close: () => {
+      pty.close();
+      terminal.dispose();
+    },
     isShow,
     write: (value: string) => {
       return (
-        !invalid && writeEmitter.fire(value.replace(/   /g, "\r\n  ") + "\r\n")
+        !invalid &&
+        writeEmitter.fire(value.replace(/^   \w/g, "\r\n  ") + "\r\n")
       );
     },
     activate: () => (invalid = false),
