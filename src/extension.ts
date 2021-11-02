@@ -4,6 +4,8 @@ import { scanFile as scanWorkspaceForPubspecs } from "./scanFile";
 import { NestTreeItem, NestTreeProvider } from "./tree";
 import { BuildType } from "./models/enums";
 import { addSetting } from "./helpers/vscode_helper";
+import path = require("path");
+import { createTerminal } from "./util";
 
 const packageName = "dart-build-runner";
 
@@ -23,11 +25,31 @@ export async function activate(context: vscode.ExtensionContext) {
   };
 
   register(`${packageName}.build`, (args: NestTreeItem) =>
-    Process.instance.create(args, BuildType.build)
+    Process.instance.runBuildRunner(args, BuildType.build)
+  );
+
+  register(`${packageName}.clean-build`, (args: NestTreeItem) =>
+    Process.instance.runBuildRunner(args, BuildType.clean)
   );
 
   register(`${packageName}.watch`, (args: NestTreeItem) =>
-    Process.instance.create(args, BuildType.watch)
+    Process.instance.runBuildRunner(args, BuildType.watch)
+  );
+
+  register(`${packageName}.get-dependencies`, (args: NestTreeItem) => {
+    if (args.contextValue.includes("file")) {
+      return Process.instance.runGetDependencies(args);
+    } else {
+      Process.instance.runGetAllDependencies();
+    }
+  });
+
+  register(`${packageName}.upgrade-dependencies`, (args: NestTreeItem) =>
+    Process.instance.runUpgradeDependencies(args)
+  );
+
+  register(`${packageName}.upgrade-dependencies-major`, (args: NestTreeItem) =>
+    Process.instance.runUpgradeDependenciesMajor(args)
   );
 
   register(`${packageName}.terminate`, (args: NestTreeItem) =>
@@ -38,6 +60,10 @@ export async function activate(context: vscode.ExtensionContext) {
     NestTreeProvider.instance.setTreeList([]);
 
     loadFiles();
+  });
+
+  register(`${packageName}.open-terminal`, (args: NestTreeItem) => {
+    createTerminal(args);
   });
 
   await loadFiles();
@@ -54,20 +80,27 @@ async function loadFiles() {
 }
 
 export function setPubspecSettings(arg: { [key: string]: any }) {
-  const processes = Object.keys(arg).map((key) => key.slice(0, -1));
+  const getContextValue = (key: string) => {
+    return "file-" + key.split(path.sep).reverse()[0];
+  };
 
-  var uris = NestTreeProvider.instance.uris;
+  const running = Object.keys(arg).map((key) =>
+    getContextValue(key.slice(0, -1))
+  );
 
-  uris = uris.filter((uri) => {
-    return !processes.includes(uri);
+  var notRunning = NestTreeProvider.instance.uris.map((e) =>
+    getContextValue(e)
+  );
+
+  notRunning = notRunning.filter((file) => {
+    return !running.includes(file);
   });
 
-  console.log("uris", uris);
-  console.log("running", processes);
+  console.log("not running", notRunning);
+  console.log("running", running);
 
-  addSetting("dbr.running", processes);
-
-  addSetting("dbr.notRunning", uris);
+  addSetting("dbr.running", running);
+  addSetting("dbr.notRunning", notRunning);
 
   NestTreeProvider.instance.refresh();
 }

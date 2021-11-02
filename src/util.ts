@@ -1,4 +1,5 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
+import { NestTreeItem } from "./tree";
 
 export interface OutputTaskParams {
   title: string;
@@ -13,9 +14,25 @@ export interface OutputTask {
   write: (value: string) => void;
   activate: () => void;
   invalidate: () => void;
+  close: () => void;
 }
 
-export const createOutput = async (title: string, onDispose: () => void): Promise<OutputTask> => {
+export const createTerminal = async (data: NestTreeItem) => {
+  const pubspecStr = "/pubspec.yaml";
+  const dir = data.resourceUri.fsPath.slice(0, -pubspecStr.length);
+
+  const terminal = vscode.window.createTerminal({
+    name: data.title,
+    cwd: dir,
+  });
+
+  terminal.show();
+};
+
+export const createOutput = async (
+  title: string,
+  onDispose: () => void
+): Promise<OutputTask> => {
   let invalid = false;
 
   const writeEmitter = new vscode.EventEmitter<string>();
@@ -28,29 +45,40 @@ export const createOutput = async (title: string, onDispose: () => void): Promis
       writeEmitter.dispose();
     },
   };
+
   const terminal = vscode.window.createTerminal({ name: title, pty });
   const id = await terminal.processId;
+
   const isShow = async () => {
     const activeId = await vscode.window.activeTerminal?.processId;
     return activeId === id;
   };
-
   return {
     id: id,
     show: terminal.show,
     hide: terminal.hide,
+    close: pty.close,
     isShow,
-    write: (value: string) => !invalid && writeEmitter.fire(value + '\r\n'),
+    write: (value: string) => {
+      return (
+        !invalid && writeEmitter.fire(value.replace(/   /g, "\r\n  ") + "\r\n")
+      );
+    },
     activate: () => (invalid = false),
 
     invalidate: () => {
-      writeEmitter.fire('\r\n\r\nTerminal will be reused by tasks, press any key to close it.\r\n');
+      writeEmitter.fire(
+        "\r\n\r\nTerminal will be reused by tasks, press any key to close it.\r\n"
+      );
       invalid = true;
     },
   };
 };
 
-export type LoadingTask = { report: (message: string) => void; stop: () => void };
+export type LoadingTask = {
+  report: (message: string) => void;
+  stop: () => void;
+};
 
 export const createLoading = async (title: string) => {
   return new Promise<LoadingTask>((resolve) => {

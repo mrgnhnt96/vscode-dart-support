@@ -22,6 +22,8 @@ const scanFile_1 = __webpack_require__(14);
 const tree_1 = __webpack_require__(23);
 const enums_1 = __webpack_require__(24);
 const vscode_helper_1 = __webpack_require__(26);
+const path = __webpack_require__(25);
+const util_1 = __webpack_require__(6);
 const packageName = "dart-build-runner";
 function activate(context) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -30,12 +32,26 @@ function activate(context) {
         const register = (command, callback, thisArg) => {
             return context.subscriptions.push(vscode.commands.registerCommand(command, callback, thisArg));
         };
-        register(`${packageName}.build`, (args) => process_1.Process.instance.create(args, enums_1.BuildType.build));
-        register(`${packageName}.watch`, (args) => process_1.Process.instance.create(args, enums_1.BuildType.watch));
+        register(`${packageName}.build`, (args) => process_1.Process.instance.runBuildRunner(args, enums_1.BuildType.build));
+        register(`${packageName}.clean-build`, (args) => process_1.Process.instance.runBuildRunner(args, enums_1.BuildType.clean));
+        register(`${packageName}.watch`, (args) => process_1.Process.instance.runBuildRunner(args, enums_1.BuildType.watch));
+        register(`${packageName}.get-dependencies`, (args) => {
+            if (args.contextValue.includes("file")) {
+                return process_1.Process.instance.runGetDependencies(args);
+            }
+            else {
+                process_1.Process.instance.runGetAllDependencies();
+            }
+        });
+        register(`${packageName}.upgrade-dependencies`, (args) => process_1.Process.instance.runUpgradeDependencies(args));
+        register(`${packageName}.upgrade-dependencies-major`, (args) => process_1.Process.instance.runUpgradeDependenciesMajor(args));
         register(`${packageName}.terminate`, (args) => process_1.Process.instance.terminate(args));
         register(`${packageName}.refresh`, () => {
             tree_1.NestTreeProvider.instance.setTreeList([]);
             loadFiles();
+        });
+        register(`${packageName}.open-terminal`, (args) => {
+            (0, util_1.createTerminal)(args);
         });
         yield loadFiles();
     });
@@ -50,15 +66,18 @@ function loadFiles() {
     });
 }
 function setPubspecSettings(arg) {
-    const processes = Object.keys(arg).map((key) => key.slice(0, -1));
-    var uris = tree_1.NestTreeProvider.instance.uris;
-    uris = uris.filter((uri) => {
-        return !processes.includes(uri);
+    const getContextValue = (key) => {
+        return "file-" + key.split(path.sep).reverse()[0];
+    };
+    const running = Object.keys(arg).map((key) => getContextValue(key.slice(0, -1)));
+    var notRunning = tree_1.NestTreeProvider.instance.uris.map((e) => getContextValue(e));
+    notRunning = notRunning.filter((file) => {
+        return !running.includes(file);
     });
-    console.log("uris", uris);
-    console.log("running", processes);
-    (0, vscode_helper_1.addSetting)("dbr.running", processes);
-    (0, vscode_helper_1.addSetting)("dbr.notRunning", uris);
+    console.log("not running", notRunning);
+    console.log("running", running);
+    (0, vscode_helper_1.addSetting)("dbr.running", running);
+    (0, vscode_helper_1.addSetting)("dbr.notRunning", notRunning);
     tree_1.NestTreeProvider.instance.refresh();
 }
 exports.setPubspecSettings = setPubspecSettings;
@@ -94,9 +113,11 @@ const childProcess = __webpack_require__(3);
 const fs = __webpack_require__(4);
 const os = __webpack_require__(5);
 const vscode = __webpack_require__(1);
-const util_1 = __webpack_require__(6);
 const extension_1 = __webpack_require__(0);
 const vscode_helper_1 = __webpack_require__(26);
+const enums_1 = __webpack_require__(24);
+const tree_1 = __webpack_require__(23);
+const util_1 = __webpack_require__(6);
 const pidtree = __webpack_require__(7);
 const path = __webpack_require__(25);
 class Process {
@@ -114,8 +135,54 @@ class Process {
             ? vscode.Uri.joinPath(uri, `..${path.sep}`).fsPath
             : uri.fsPath;
     }
+    getProcessData(data) {
+        const dir = this.getDirPath(data.resourceUri);
+        return {
+            title: data.title,
+            uri: dir,
+        };
+    }
     setContext() {
         (0, extension_1.setPubspecSettings)(this.processes);
+    }
+    runGetDependencies(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ["pub", "get"];
+            const details = this.getProcessData(data);
+            yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
+        });
+    }
+    runGetAllDependencies() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ["pub", "get"];
+            // await this.create(data, args, (message) =>
+            //   message.includes("Succeeded after") ? true : false
+            // );
+        });
+    }
+    runUpgradeDependencies(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ["pub", "upgrade"];
+            const details = this.getProcessData(data);
+            yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
+        });
+    }
+    runUpgradeDependenciesMajor(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ["pub", "upgrade", "--major-versions"];
+            const details = this.getProcessData(data);
+            yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
+        });
+    }
+    runBuildRunner(data, type) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ["pub", "run", "build_runner", type];
+            if (type !== enums_1.BuildType.clean) {
+                args.push("--delete-conflicting-outputs");
+            }
+            const details = this.getProcessData(data);
+            yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
+        });
     }
     /**
      * Create the process
@@ -123,17 +190,10 @@ class Process {
      * @param type
      * @returns
      */
-    create(data, type) {
+    create(data, args = [], isFinished) {
         var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
-            const cwd = this.getDirPath(data.resourceUri);
-            const args = [
-                "pub",
-                "run",
-                "build_runner",
-                type,
-                "--delete-conflicting-outputs",
-            ];
+            const cwd = data.uri;
             this.outputs[cwd] =
                 (_a = this.outputs[cwd]) !== null && _a !== void 0 ? _a : (yield (0, util_1.createOutput)(data.title, () => __awaiter(this, void 0, void 0, function* () {
                     delete this.outputs[cwd];
@@ -174,7 +234,7 @@ class Process {
             const getMessage = (value) => value.toString().split("\n").join(" ");
             (_b = process.stdout) === null || _b === void 0 ? void 0 : _b.on("data", (value) => __awaiter(this, void 0, void 0, function* () {
                 const message = getMessage(value);
-                const finished = message.includes("Succeeded after") ? true : false;
+                const finished = isFinished(message);
                 yield loading(message, finished);
                 output.write(message);
             }));
@@ -196,7 +256,6 @@ class Process {
                 output === null || output === void 0 ? void 0 : output.invalidate();
                 delete this.processes[cwd];
                 this.setContext();
-                console.log("this.processes[cwd]=" + this.processes[cwd]);
             }));
         });
     }
@@ -206,7 +265,10 @@ class Process {
      */
     terminate(data) {
         return __awaiter(this, void 0, void 0, function* () {
-            const cwd = this.getDirPath(data.resourceUri);
+            if (data instanceof tree_1.NestTreeItem) {
+                data = this.getProcessData(data);
+            }
+            const cwd = data.uri;
             const process = this.processes[cwd];
             if (process === null || process === void 0 ? void 0 : process.pid) {
                 const isWindow = os.platform() === "win32";
@@ -267,8 +329,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createLoading = exports.createOutput = void 0;
+exports.createLoading = exports.createOutput = exports.createTerminal = void 0;
 const vscode = __webpack_require__(1);
+const createTerminal = (data) => __awaiter(void 0, void 0, void 0, function* () {
+    const pubspecStr = "/pubspec.yaml";
+    const dir = data.resourceUri.fsPath.slice(0, -pubspecStr.length);
+    const terminal = vscode.window.createTerminal({
+        name: data.title,
+        cwd: dir,
+    });
+    terminal.show();
+});
+exports.createTerminal = createTerminal;
 const createOutput = (title, onDispose) => __awaiter(void 0, void 0, void 0, function* () {
     let invalid = false;
     const writeEmitter = new vscode.EventEmitter();
@@ -292,11 +364,14 @@ const createOutput = (title, onDispose) => __awaiter(void 0, void 0, void 0, fun
         id: id,
         show: terminal.show,
         hide: terminal.hide,
+        close: pty.close,
         isShow,
-        write: (value) => !invalid && writeEmitter.fire(value + '\r\n'),
+        write: (value) => {
+            return (!invalid && writeEmitter.fire(value.replace(/   /g, "\r\n  ") + "\r\n"));
+        },
         activate: () => (invalid = false),
         invalidate: () => {
-            writeEmitter.fire('\r\n\r\nTerminal will be reused by tasks, press any key to close it.\r\n');
+            writeEmitter.fire("\r\n\r\nTerminal will be reused by tasks, press any key to close it.\r\n");
             invalid = true;
         },
     };
@@ -7453,6 +7528,7 @@ exports.warnOptionDeprecation = warnOptionDeprecation;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.NestTreeItem = exports.NestTreeProvider = void 0;
 const vscode = __webpack_require__(1);
+const path = __webpack_require__(25);
 const recurse = (data) => {
     var _a;
     return new NestTreeItem(data.name, data.uri, (_a = data.children) === null || _a === void 0 ? void 0 : _a.sort((a, b) => (a.name > b.name ? 1 : -1)).map((e) => recurse(e)));
@@ -7478,12 +7554,12 @@ class NestTreeProvider {
             .sort((a, b) => (a.name > b.name ? 1 : -1))
             .map((e) => recurse(e));
         const getDirPath = (uri) => {
-            const path = uri.path;
-            const pubspecStr = "/pubspec.yaml";
-            if (path.endsWith(pubspecStr)) {
-                return path.slice(0, path.length - pubspecStr.length);
+            const dir = uri.fsPath;
+            const pubspecStr = `${path.sep}pubspec.yaml`;
+            if (dir.endsWith(pubspecStr)) {
+                return dir.slice(0, dir.length - pubspecStr.length);
             }
-            return path;
+            return dir;
         };
         const children = [];
         list.forEach((nest) => {
@@ -7540,6 +7616,7 @@ var BuildType;
 (function (BuildType) {
     BuildType["watch"] = "watch";
     BuildType["build"] = "build";
+    BuildType["clean"] = "clean";
     BuildType["terminate"] = "terminate";
 })(BuildType = exports.BuildType || (exports.BuildType = {}));
 

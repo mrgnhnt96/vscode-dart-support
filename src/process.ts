@@ -2,17 +2,22 @@ import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as vscode from "vscode";
-import { NestTreeItem, NestTreeProvider } from "./tree";
-import { createLoading, createOutput, LoadingTask, OutputTask } from "./util";
-import { BuildType } from "./models/enums";
 import { setPubspecSettings } from "./extension";
 import { readSetting } from "./helpers/vscode_helper";
+import { BuildType } from "./models/enums";
+import { NestTreeItem } from "./tree";
+import { createLoading, createOutput, LoadingTask, OutputTask } from "./util";
 
 import pidtree = require("pidtree");
 import path = require("path");
 
 interface Processes {
   [key: string]: childProcess.ChildProcess;
+}
+
+interface ProcessData {
+  title: string;
+  uri: string;
 }
 
 type Outputs = {
@@ -32,6 +37,15 @@ export class Process {
       : uri.fsPath;
   }
 
+  private getProcessData(data: NestTreeItem): ProcessData {
+    const dir = this.getDirPath(data.resourceUri);
+
+    return {
+      title: data.title,
+      uri: dir,
+    };
+  }
+
   setContext() {
     setPubspecSettings(this.processes);
   }
@@ -39,22 +53,70 @@ export class Process {
   processes: Processes = {};
   private outputs: Outputs = {};
 
+  async runGetDependencies(data: NestTreeItem) {
+    const args = ["pub", "get"];
+
+    const details = this.getProcessData(data);
+
+    await this.create(details, args, (message) =>
+      message.includes("Succeeded after") ? true : false
+    );
+  }
+
+  async runGetAllDependencies() {
+    const args = ["pub", "get"];
+
+    // await this.create(data, args, (message) =>
+    //   message.includes("Succeeded after") ? true : false
+    // );
+  }
+
+  async runUpgradeDependencies(data: NestTreeItem) {
+    const args = ["pub", "upgrade"];
+
+    const details = this.getProcessData(data);
+
+    await this.create(details, args, (message) =>
+      message.includes("Succeeded after") ? true : false
+    );
+  }
+
+  async runUpgradeDependenciesMajor(data: NestTreeItem) {
+    const args = ["pub", "upgrade", "--major-versions"];
+
+    const details = this.getProcessData(data);
+
+    await this.create(details, args, (message) =>
+      message.includes("Succeeded after") ? true : false
+    );
+  }
+
+  async runBuildRunner(data: NestTreeItem, type: BuildType) {
+    const args = ["pub", "run", "build_runner", type];
+
+    if (type !== BuildType.clean) {
+      args.push("--delete-conflicting-outputs");
+    }
+
+    const details = this.getProcessData(data);
+
+    await this.create(details, args, (message) =>
+      message.includes("Succeeded after") ? true : false
+    );
+  }
+
   /**
    * Create the process
    * @param data
    * @param type
    * @returns
    */
-  async create(data: NestTreeItem, type: BuildType) {
-    const cwd = this.getDirPath(data.resourceUri);
-
-    const args = [
-      "pub",
-      "run",
-      "build_runner",
-      type,
-      "--delete-conflicting-outputs",
-    ];
+  private async create(
+    data: ProcessData,
+    args: string[] = [],
+    isFinished: (message: string) => boolean
+  ) {
+    const cwd = data.uri;
 
     this.outputs[cwd] =
       this.outputs[cwd] ??
@@ -116,7 +178,7 @@ export class Process {
 
     process.stdout?.on("data", async (value) => {
       const message = getMessage(value);
-      const finished = message.includes("Succeeded after") ? true : false;
+      const finished = isFinished(message);
 
       await loading(message, finished);
 
@@ -151,8 +213,6 @@ export class Process {
       delete this.processes[cwd];
 
       this.setContext();
-
-      console.log("this.processes[cwd]=" + this.processes[cwd]);
     });
   }
 
@@ -160,8 +220,12 @@ export class Process {
    * Terminate the process
    * @param data
    */
-  async terminate(data: NestTreeItem) {
-    const cwd = this.getDirPath(data.resourceUri);
+  async terminate(data: ProcessData | NestTreeItem) {
+    if (data instanceof NestTreeItem) {
+      data = this.getProcessData(data);
+    }
+
+    const cwd = data.uri;
 
     const process = this.processes[cwd];
 

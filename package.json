@@ -60,6 +60,11 @@
       },
       {
         "category": "dart-build-runner",
+        "command": "dart-build-runner.clean-build",
+        "title": "Clear build_runner Cache"
+      },
+      {
+        "category": "dart-build-runner",
         "command": "dart-build-runner.terminate",
         "title": "Terminate",
         "icon": "$(debug-stop)"
@@ -69,6 +74,27 @@
         "command": "dart-build-runner.refresh",
         "title": "Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "category": "dart-build-runner",
+        "command": "dart-build-runner.open-terminal",
+        "title": "Open in Terminal"
+      },
+      {
+        "category": "dart-build-runner",
+        "command": "dart-build-runner.get-dependencies",
+        "title": "Get Dependencies",
+        "icon": "$(package)"
+      },
+      {
+        "category": "dart-build-runner",
+        "command": "dart-build-runner.upgrade-dependencies",
+        "title": "Upgrade Dependencies"
+      },
+      {
+        "category": "dart-build-runner",
+        "command": "dart-build-runner.upgrade-dependencies-major",
+        "title": "Upgrade Dependencies (Major)"
       }
     ],
     "menus": {
@@ -82,11 +108,31 @@
           "when": "false"
         },
         {
+          "command": "dart-build-runner.clean-build",
+          "when": "false"
+        },
+        {
           "command": "dart-build-runner.terminate",
           "when": "false"
         },
         {
           "command": "dart-build-runner.refresh",
+          "when": "false"
+        },
+        {
+          "command": "dart-build-runner.open-terminal",
+          "when": "false"
+        },
+        {
+          "command": "dart-build-runner.get-dependencies",
+          "when": "false"
+        },
+        {
+          "command": "dart-build-runner.upgrade-dependencies",
+          "when": "false"
+        },
+        {
+          "command": "dart-build-runner.upgrade-dependencies-major",
           "when": "false"
         }
       ],
@@ -100,18 +146,43 @@
       "view/item/context": [
         {
           "command": "dart-build-runner.build",
-          "when": "view == dbr-view && viewItem in dbr.hasBuildRunnerDep && resourceDirname in dbr.notRunning",
+          "when": "view == dbr-view && viewItem in dbr.hasBuildRunnerDep && viewItem in dbr.notRunning",
           "group": "inline"
         },
         {
           "command": "dart-build-runner.watch",
-          "when": "view == dbr-view && viewItem in dbr.hasBuildRunnerDep && resourceDirname in dbr.notRunning",
+          "when": "view == dbr-view && viewItem in dbr.hasBuildRunnerDep && viewItem in dbr.notRunning",
           "group": "inline"
         },
         {
+          "command": "dart-build-runner.get-dependencies",
+          "when": "view == dbr-view",
+          "group": "inline@3"
+        },
+        {
+          "command": "dart-build-runner.upgrade-dependencies",
+          "when": "view == dbr-view && file in viewItem",
+          "group": "@2"
+        },
+        {
+          "command": "dart-build-runner.upgrade-dependencies-major",
+          "when": "view == dbr-view && file in viewItem",
+          "group": "@2"
+        },
+        {
           "command": "dart-build-runner.terminate",
-          "when": "view == dbr-view && resourceDirname in dbr.running",
+          "when": "view == dbr-view && viewItem in dbr.running",
           "group": "inline"
+        },
+        {
+          "command": "dart-build-runner.clean-build",
+          "when": "view == dbr-view && file in viewItem",
+          "group": "@3"
+        },
+        {
+          "command": "dart-build-runner.open-terminal",
+          "when": "view == dbr-view",
+          "group": "@1"
         }
       ]
     },

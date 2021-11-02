@@ -2,6 +2,7 @@ import { TreeModel } from "./models/pubspec";
 import * as vscode from "vscode";
 import { title } from "process";
 import { EDEADLK } from "constants";
+import path = require("path");
 
 type EventEmitterTreeItem = NestTreeItem | undefined | void;
 
@@ -35,15 +36,15 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
       .map((e) => recurse(e));
 
     const getDirPath = (uri: vscode.Uri) => {
-      const path = uri.path;
+      const dir = uri.fsPath;
 
-      const pubspecStr = "/pubspec.yaml";
+      const pubspecStr = `${path.sep}pubspec.yaml`;
 
-      if (path.endsWith(pubspecStr)) {
-        return path.slice(0, path.length - pubspecStr.length);
+      if (dir.endsWith(pubspecStr)) {
+        return dir.slice(0, dir.length - pubspecStr.length);
       }
 
-      return path;
+      return dir;
     };
 
     const children: TreeModel[] = [];

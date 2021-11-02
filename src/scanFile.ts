@@ -51,10 +51,9 @@ export const scanFile = async (): Promise<TreeModel[]> => {
 
     const pubspecObjs = await Promise.all(pubspecObjsPromises);
 
-    // TODO: build runner commands should show up only if build_runner exists
-    // add setting for reloading files (or listener for all pubspec.yaml files?)
-    // add setting to get all deps
+    // TODO: add setting to get all deps
     // add setting to upgrade all deps
+    // add setting to use dart or flutter
 
     //All pubspec.yaml that contain build runner
     const effectList = pubspecObjs.filter((e) => e !== null && e !== undefined);
