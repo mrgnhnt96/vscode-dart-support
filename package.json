@@ -1,9 +1,9 @@
 {
   "name": "dart-support",
-  "displayName": "Dart build_runner",
-  "description": "Dart build_runner tools in VSCode.",
+  "displayName": "Dart Support",
+  "description": "Quick actions for dart projects, pubspec.yaml deps & build_runner",
   "publisher": "mrgnhnt96",
-  "version": "1.0.6",
+  "version": "0.0.1",
   "engines": {
     "vscode": "^1.55.0"
   },
