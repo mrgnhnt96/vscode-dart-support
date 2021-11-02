@@ -5,7 +5,8 @@ import * as vscode from "vscode";
 import { NestTreeItem, NestTreeProvider } from "./tree";
 import { createLoading, createOutput, LoadingTask, OutputTask } from "./util";
 import { BuildType } from "./models/enums";
-import { setSettings } from "./extension";
+import { setPubspecSettings } from "./extension";
+import { readSetting } from "./helpers/vscode_helper";
 
 import pidtree = require("pidtree");
 import path = require("path");
@@ -32,7 +33,7 @@ export class Process {
   }
 
   setContext() {
-    setSettings(this.processes);
+    setPubspecSettings(this.processes);
   }
 
   processes: Processes = {};
@@ -73,20 +74,6 @@ export class Process {
       if (!outputIsShow) {
         return output.show();
       }
-
-      const option = await vscode.window.showWarningMessage(
-        `The task 'build_runner:(${data.title})' is already active.`,
-        "Terminate Task",
-        "Restart Task"
-      );
-
-      if (option === "Terminate Task") {
-        return await this.terminate(data);
-      } else if (option === "Restart Task") {
-        await this.terminate(data);
-      } else {
-        return;
-      }
     }
 
     output.activate();
@@ -107,11 +94,16 @@ export class Process {
     this.setContext();
 
     output.write(cwd);
-    output.write(["flutter", ...args].join(" "));
 
-    await loading(["flutter", ...args].join(" "));
+    const useFlutter = readSetting("useFlutterForBuildRunner") as boolean;
 
-    process = childProcess.spawn("flutter", args, {
+    const command = useFlutter ? "flutter" : "dart";
+
+    output.write([command, ...args].join(" "));
+
+    await loading([command, ...args].join(" "));
+
+    process = childProcess.spawn(command, args, {
       cwd,
       shell: os.platform() === "win32",
     });

@@ -19,6 +19,8 @@
     "dart",
     "build",
     "build_runner",
+    "pubspec",
+    "support",
     "generate"
   ],
   "activationEvents": [
@@ -27,24 +29,46 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": [
+      {
+        "title": "Dart Build Runner",
+        "properties": {
+          "dbr.useFlutterForBuildRunner": {
+            "type": "boolean",
+            "enum": [
+              true,
+              false
+            ],
+            "default": false,
+            "description": "If true, flutter will be used to run build_runner."
+          }
+        }
+      }
+    ],
     "commands": [
       {
         "category": "dart-build-runner",
         "command": "dart-build-runner.build",
-        "title": "build",
+        "title": "Build",
         "icon": "$(play)"
       },
       {
         "category": "dart-build-runner",
         "command": "dart-build-runner.watch",
-        "title": "watch",
+        "title": "Watch",
         "icon": "$(sync)"
       },
       {
         "category": "dart-build-runner",
         "command": "dart-build-runner.terminate",
-        "title": "terminate",
+        "title": "Terminate",
         "icon": "$(debug-stop)"
+      },
+      {
+        "category": "dart-build-runner",
+        "command": "dart-build-runner.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -60,6 +84,17 @@
         {
           "command": "dart-build-runner.terminate",
           "when": "false"
+        },
+        {
+          "command": "dart-build-runner.refresh",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "dart-build-runner.refresh",
+          "when": "view == dbr-view",
+          "group": "navigation"
         }
       ],
       "view/item/context": [

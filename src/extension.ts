@@ -3,6 +3,7 @@ import { Process } from "./process";
 import { scanFile as scanWorkspaceForPubspecs } from "./scanFile";
 import { NestTreeItem, NestTreeProvider } from "./tree";
 import { BuildType } from "./models/enums";
+import { addSetting } from "./helpers/vscode_helper";
 
 const packageName = "dart-build-runner";
 
@@ -33,16 +34,26 @@ export async function activate(context: vscode.ExtensionContext) {
     Process.instance.terminate(args)
   );
 
+  register(`${packageName}.refresh`, () => {
+    NestTreeProvider.instance.setTreeList([]);
+
+    loadFiles();
+  });
+
+  await loadFiles();
+}
+
+async function loadFiles() {
   const nestList = await scanWorkspaceForPubspecs();
 
   console.log("all pubspec", nestList);
 
   NestTreeProvider.instance.setTreeList(nestList);
 
-  setSettings({});
+  setPubspecSettings({});
 }
 
-export function setSettings(arg: { [key: string]: any }) {
+export function setPubspecSettings(arg: { [key: string]: any }) {
   const processes = Object.keys(arg).map((key) => key.slice(0, -1));
 
   var uris = NestTreeProvider.instance.uris;
@@ -52,12 +63,11 @@ export function setSettings(arg: { [key: string]: any }) {
   });
 
   console.log("uris", uris);
+  console.log("running", processes);
 
-  vscode.commands.executeCommand("setContext", "dbr.running", processes);
+  addSetting("dbr.running", processes);
 
-  vscode.commands.executeCommand("setContext", "dbr.notRunning", uris);
-
-  console.log("processes", processes);
+  addSetting("dbr.notRunning", uris);
 
   NestTreeProvider.instance.refresh();
 }
