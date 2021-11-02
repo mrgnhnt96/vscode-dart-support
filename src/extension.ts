@@ -7,7 +7,7 @@ import { addSetting } from "./helpers/vscode_helper";
 import path = require("path");
 import { createTerminal } from "./util";
 
-const packageName = "dart-build-runner";
+const packageName = "dart-support";
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log(`${packageName} loading`);

@@ -1,5 +1,5 @@
 {
-  "name": "dart-build-runner",
+  "name": "dart-support",
   "displayName": "Dart build_runner",
   "description": "Dart build_runner tools in VSCode.",
   "publisher": "mrgnhnt96",
@@ -7,7 +7,7 @@
   "engines": {
     "vscode": "^1.55.0"
   },
-  "repository": "https://github.com/mrgnhnt96/vscode-dart-build-runner",
+  "repository": "https://github.com/mrgnhnt96/vscode-dart-support",
   "extensionDependencies": [
     "Dart-Code.dart-code"
   ],
@@ -47,162 +47,162 @@
     ],
     "commands": [
       {
-        "category": "dart-build-runner",
-        "command": "dart-build-runner.build",
+        "category": "dart-support",
+        "command": "dart-support.build",
         "title": "build_runner: Build",
         "icon": "$(play)"
       },
       {
-        "category": "dart-build-runner",
-        "command": "dart-build-runner.watch",
+        "category": "dart-support",
+        "command": "dart-support.watch",
         "title": "build_runner: Watch",
         "icon": "$(sync)"
       },
       {
-        "category": "dart-build-runner",
-        "command": "dart-build-runner.clean-build",
+        "category": "dart-support",
+        "command": "dart-support.clean-build",
         "title": "build_runner: Clear Cache"
       },
       {
-        "category": "dart-build-runner",
-        "command": "dart-build-runner.terminate",
+        "category": "dart-support",
+        "command": "dart-support.terminate",
         "title": "Terminate",
         "icon": "$(debug-stop)"
       },
       {
-        "category": "dart-build-runner",
-        "command": "dart-build-runner.refresh",
+        "category": "dart-support",
+        "command": "dart-support.refresh",
         "title": "Refresh",
         "icon": "$(refresh)"
       },
       {
-        "category": "dart-build-runner",
-        "command": "dart-build-runner.open-terminal",
+        "category": "dart-support",
+        "command": "dart-support.open-terminal",
         "title": "Open in Terminal"
       },
       {
-        "category": "dart-build-runner",
-        "command": "dart-build-runner.get-dependencies",
+        "category": "dart-support",
+        "command": "dart-support.get-dependencies",
         "title": "Get Dependencies",
         "icon": "$(package)"
       },
       {
-        "category": "dart-build-runner",
-        "command": "dart-build-runner.upgrade-dependencies",
+        "category": "dart-support",
+        "command": "dart-support.upgrade-dependencies",
         "title": "Upgrade Dependencies"
       },
       {
-        "category": "dart-build-runner",
-        "command": "dart-build-runner.upgrade-dependencies-major",
+        "category": "dart-support",
+        "command": "dart-support.upgrade-dependencies-major",
         "title": "Upgrade Dependencies (Major)"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "dart-build-runner.watch",
+          "command": "dart-support.watch",
           "when": "false"
         },
         {
-          "command": "dart-build-runner.build",
+          "command": "dart-support.build",
           "when": "false"
         },
         {
-          "command": "dart-build-runner.clean-build",
+          "command": "dart-support.clean-build",
           "when": "false"
         },
         {
-          "command": "dart-build-runner.terminate",
+          "command": "dart-support.terminate",
           "when": "false"
         },
         {
-          "command": "dart-build-runner.refresh",
+          "command": "dart-support.refresh",
           "when": "false"
         },
         {
-          "command": "dart-build-runner.open-terminal",
+          "command": "dart-support.open-terminal",
           "when": "false"
         },
         {
-          "command": "dart-build-runner.get-dependencies",
+          "command": "dart-support.get-dependencies",
           "when": "false"
         },
         {
-          "command": "dart-build-runner.upgrade-dependencies",
+          "command": "dart-support.upgrade-dependencies",
           "when": "false"
         },
         {
-          "command": "dart-build-runner.upgrade-dependencies-major",
+          "command": "dart-support.upgrade-dependencies-major",
           "when": "false"
         }
       ],
       "explorer/context": [
         {
-          "command": "dart-build-runner.build",
+          "command": "dart-support.build",
           "group": "dart-support@1",
           "when": "explorerResourceIsFolder || resourceLangId == dart"
         },
         {
-          "command": "dart-build-runner.watch",
+          "command": "dart-support.watch",
           "group": "dart-support@2",
           "when": "explorerResourceIsFolder || resourceLangId == dart"
         },
         {
-          "command": "dart-build-runner.clean-build",
+          "command": "dart-support.clean-build",
           "group": "dart-support@3",
           "when": "explorerResourceIsFolder || resourceLangId == dart"
         }
       ],
       "view/title": [
         {
-          "command": "dart-build-runner.get-dependencies",
+          "command": "dart-support.get-dependencies",
           "when": "view == dart-support-view",
           "group": "navigation@1"
         },
         {
-          "command": "dart-build-runner.refresh",
+          "command": "dart-support.refresh",
           "when": "view == dart-support-view",
           "group": "navigation@2"
         }
       ],
       "view/item/context": [
         {
-          "command": "dart-build-runner.build",
+          "command": "dart-support.build",
           "when": "view == dart-support-view && viewItem in dart-support.hasBuildRunnerDep && viewItem in dart-support.notRunning",
           "group": "inline"
         },
         {
-          "command": "dart-build-runner.watch",
+          "command": "dart-support.watch",
           "when": "view == dart-support-view && viewItem in dart-support.hasBuildRunnerDep && viewItem in dart-support.notRunning",
           "group": "inline"
         },
         {
-          "command": "dart-build-runner.get-dependencies",
+          "command": "dart-support.get-dependencies",
           "when": "view == dart-support-view",
           "group": "inline@3"
         },
         {
-          "command": "dart-build-runner.upgrade-dependencies",
+          "command": "dart-support.upgrade-dependencies",
           "when": "view == dart-support-view && viewItem =~ /^file-.*/",
           "group": "@2"
         },
         {
-          "command": "dart-build-runner.upgrade-dependencies-major",
+          "command": "dart-support.upgrade-dependencies-major",
           "when": "view == dart-support-view && viewItem =~ /^file-.*/",
           "group": "@2"
         },
         {
-          "command": "dart-build-runner.terminate",
+          "command": "dart-support.terminate",
           "when": "view == dart-support-view && viewItem in dart-support.running",
           "group": "inline"
         },
         {
-          "command": "dart-build-runner.clean-build",
+          "command": "dart-support.clean-build",
           "when": "view == dart-support-view && viewItem =~ /^file-.*/",
           "group": "@3"
         },
         {
-          "command": "dart-build-runner.open-terminal",
+          "command": "dart-support.open-terminal",
           "when": "view == dart-support-view",
           "group": "@1"
         }

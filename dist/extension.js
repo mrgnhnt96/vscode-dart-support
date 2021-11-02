@@ -24,7 +24,7 @@ const enums_1 = __webpack_require__(24);
 const vscode_helper_1 = __webpack_require__(26);
 const path = __webpack_require__(25);
 const util_1 = __webpack_require__(6);
-const packageName = "dart-build-runner";
+const packageName = "dart-support";
 function activate(context) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log(`${packageName} loading`);
