@@ -1,5 +1,7 @@
 import { TreeModel } from "./models/pubspec";
 import * as vscode from "vscode";
+import { title } from "process";
+import { EDEADLK } from "constants";
 
 type EventEmitterTreeItem = NestTreeItem | undefined | void;
 
@@ -32,14 +34,49 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
       .sort((a, b) => (a.name > b.name ? 1 : -1))
       .map((e) => recurse(e));
 
-    const getDirPath = (uri: vscode.Uri) =>
-      uri.fsPath.slice(0, "/pubspec.yaml".length * -1);
+    console.log(
+      "contextValue",
+      this.treeList.map((e) => e.contextValue)
+    );
+
+    const getDirPath = (uri: vscode.Uri) => {
+      const path = uri.path;
+
+      const pubspecStr = "/pubspec.yaml";
+
+      if (path.endsWith(pubspecStr)) {
+        return path.slice(0, path.length - pubspecStr.length);
+      }
+
+      return path;
+    };
+
+    const children: TreeModel[] = [];
 
     list.forEach((nest) => {
       this._uris.push(getDirPath(nest.uri));
 
-      nest.children?.forEach((child) => this.uris.push(getDirPath(child.uri)));
+      children.push(...(nest?.children ?? []));
     });
+
+    const filesWithBuildRunner: string[] = [];
+
+    children.forEach((child) => {
+      const path = getDirPath(child.uri);
+      this._uris.push(path);
+
+      if (child.hasBuildRunnerDep) {
+        filesWithBuildRunner.push(`file-${child.name}`);
+      }
+    });
+
+    console.log("has build runner", filesWithBuildRunner);
+
+    vscode.commands.executeCommand(
+      "setContext",
+      "dbr.hasBuildRunnerDep",
+      filesWithBuildRunner
+    );
 
     this.refresh();
   }
@@ -72,7 +109,7 @@ export class NestTreeItem extends vscode.TreeItem {
   }
   private isDir = this.children ? true : false;
 
-  readonly contextValue = this.children ? "dir" : "file";
+  readonly contextValue = `${this.isDir ? "dir" : "file"}-${this.title}`;
 
   //Commands when click on the tree map item
   readonly command = this.isDir

@@ -1,3 +1,4 @@
+import { privateEncrypt } from "crypto";
 import path = require("path");
 import * as vscode from "vscode";
 import * as yaml from "yaml";
@@ -50,27 +51,25 @@ export const scanFile = async (): Promise<TreeModel[]> => {
 
     const pubspecObjs = await Promise.all(pubspecObjsPromises);
 
-    // TODO: remove filter
-    // build runner commands should show up only if build_runner exists
-    // we will set a new setting for this
+    // TODO: build runner commands should show up only if build_runner exists
+    // add setting for reloading files (or listener for all pubspec.yaml files?)
+    // add setting to get all deps
+    // add setting to upgrade all deps
 
-    // TODO: add list of all pubspec.yaml files
-
-    //All valid pubspec.yaml files
-    const effectList = pubspecObjs.filter((e) => {
-      return (
-        Object.keys(e?.dependencies ?? {}).includes("build_runner") ||
-        Object.keys(e?.dev_dependencies ?? {}).includes("build_runner")
-      );
-    });
+    //All pubspec.yaml that contain build runner
+    const effectList = pubspecObjs.filter((e) => e !== null && e !== undefined);
 
     const ret: TreeModel = {
       name: workspace.name!,
       uri: workspace.uri!,
+      hasBuildRunnerDep: false,
       children: effectList.map((e, i) => {
         return {
           name: e!.name,
           uri: e!.uri,
+          hasBuildRunnerDep:
+            Object.keys(e?.dependencies ?? {}).includes("build_runner") ||
+            Object.keys(e?.dev_dependencies ?? {}).includes("build_runner"),
         };
       }),
     };

@@ -9,10 +9,7 @@ const packageName = "dart-build-runner";
 export async function activate(context: vscode.ExtensionContext) {
   console.log(`${packageName} loading`);
 
-  vscode.window.registerTreeDataProvider(
-    `${packageName}-view`,
-    NestTreeProvider.instance
-  );
+  vscode.window.registerTreeDataProvider(`dbr-view`, NestTreeProvider.instance);
 
   const register = (
     command: string,
@@ -38,7 +35,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const nestList = await scanWorkspaceForPubspecs();
 
-  console.log(nestList);
+  console.log("all pubspec", nestList);
 
   NestTreeProvider.instance.setTreeList(nestList);
 
@@ -56,17 +53,9 @@ export function setSettings(arg: { [key: string]: any }) {
 
   console.log("uris", uris);
 
-  vscode.commands.executeCommand(
-    "setContext",
-    "dart-build-runner.running",
-    processes
-  );
+  vscode.commands.executeCommand("setContext", "dbr.running", processes);
 
-  vscode.commands.executeCommand(
-    "setContext",
-    "dart-build-runner.notRunning",
-    uris
-  );
+  vscode.commands.executeCommand("setContext", "dbr.notRunning", uris);
 
   console.log("processes", processes);
 

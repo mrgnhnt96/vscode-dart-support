@@ -25,7 +25,7 @@ const packageName = "dart-build-runner";
 function activate(context) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log(`${packageName} loading`);
-        vscode.window.registerTreeDataProvider(`${packageName}-view`, tree_1.NestTreeProvider.instance);
+        vscode.window.registerTreeDataProvider(`dbr-view`, tree_1.NestTreeProvider.instance);
         const register = (command, callback, thisArg) => {
             return context.subscriptions.push(vscode.commands.registerCommand(command, callback, thisArg));
         };
@@ -33,7 +33,7 @@ function activate(context) {
         register(`${packageName}.watch`, (args) => process_1.Process.instance.create(args, enums_1.BuildType.watch));
         register(`${packageName}.terminate`, (args) => process_1.Process.instance.terminate(args));
         const nestList = yield (0, scanFile_1.scanFile)();
-        console.log(nestList);
+        console.log("all pubspec", nestList);
         tree_1.NestTreeProvider.instance.setTreeList(nestList);
         setSettings({});
     });
@@ -46,8 +46,8 @@ function setSettings(arg) {
         return !processes.includes(uri);
     });
     console.log("uris", uris);
-    vscode.commands.executeCommand("setContext", "dart-build-runner.running", processes);
-    vscode.commands.executeCommand("setContext", "dart-build-runner.notRunning", uris);
+    vscode.commands.executeCommand("setContext", "dbr.running", processes);
+    vscode.commands.executeCommand("setContext", "dbr.notRunning", uris);
     console.log("processes", processes);
     tree_1.NestTreeProvider.instance.refresh();
 }
@@ -791,23 +791,23 @@ const scanFile = () => __awaiter(void 0, void 0, void 0, function* () {
         }
         const pubspecObjsPromises = pubspecUris.map((uri) => readYaml(uri));
         const pubspecObjs = yield Promise.all(pubspecObjsPromises);
-        // TODO: remove filter
-        // build runner commands should show up only if build_runner exists
-        // we will set a new setting for this
-        // TODO: add list of all pubspec.yaml files
-        //All valid pubspec.yaml files
-        const effectList = pubspecObjs.filter((e) => {
-            var _a, _b;
-            return (Object.keys((_a = e === null || e === void 0 ? void 0 : e.dependencies) !== null && _a !== void 0 ? _a : {}).includes("build_runner") ||
-                Object.keys((_b = e === null || e === void 0 ? void 0 : e.dev_dependencies) !== null && _b !== void 0 ? _b : {}).includes("build_runner"));
-        });
+        // TODO: build runner commands should show up only if build_runner exists
+        // add setting for reloading files (or listener for all pubspec.yaml files?)
+        // add setting to get all deps
+        // add setting to upgrade all deps
+        //All pubspec.yaml that contain build runner
+        const effectList = pubspecObjs.filter((e) => e !== null && e !== undefined);
         const ret = {
             name: workspace.name,
             uri: workspace.uri,
+            hasBuildRunnerDep: false,
             children: effectList.map((e, i) => {
+                var _a, _b;
                 return {
                     name: e.name,
                     uri: e.uri,
+                    hasBuildRunnerDep: Object.keys((_a = e === null || e === void 0 ? void 0 : e.dependencies) !== null && _a !== void 0 ? _a : {}).includes("build_runner") ||
+                        Object.keys((_b = e === null || e === void 0 ? void 0 : e.dev_dependencies) !== null && _b !== void 0 ? _b : {}).includes("build_runner"),
                 };
             }),
         };
@@ -7475,12 +7475,31 @@ class NestTreeProvider {
         this.treeList = list
             .sort((a, b) => (a.name > b.name ? 1 : -1))
             .map((e) => recurse(e));
-        const getDirPath = (uri) => uri.fsPath.slice(0, "/pubspec.yaml".length * -1);
+        console.log("contextValue", this.treeList.map((e) => e.contextValue));
+        const getDirPath = (uri) => {
+            const path = uri.path;
+            const pubspecStr = "/pubspec.yaml";
+            if (path.endsWith(pubspecStr)) {
+                return path.slice(0, path.length - pubspecStr.length);
+            }
+            return path;
+        };
+        const children = [];
         list.forEach((nest) => {
             var _a;
             this._uris.push(getDirPath(nest.uri));
-            (_a = nest.children) === null || _a === void 0 ? void 0 : _a.forEach((child) => this.uris.push(getDirPath(child.uri)));
+            children.push(...((_a = nest === null || nest === void 0 ? void 0 : nest.children) !== null && _a !== void 0 ? _a : []));
         });
+        const filesWithBuildRunner = [];
+        children.forEach((child) => {
+            const path = getDirPath(child.uri);
+            this._uris.push(path);
+            if (child.hasBuildRunnerDep) {
+                filesWithBuildRunner.push(`file-${child.name}`);
+            }
+        });
+        console.log("has build runner", filesWithBuildRunner);
+        vscode.commands.executeCommand("setContext", "dbr.hasBuildRunnerDep", filesWithBuildRunner);
         this.refresh();
     }
 }
@@ -7493,7 +7512,7 @@ class NestTreeItem extends vscode.TreeItem {
         this.resourceUri = resourceUri;
         this.children = children;
         this.isDir = this.children ? true : false;
-        this.contextValue = this.children ? "dir" : "file";
+        this.contextValue = `${this.isDir ? "dir" : "file"}-${this.title}`;
         //Commands when click on the tree map item
         this.command = this.isDir
             ? undefined

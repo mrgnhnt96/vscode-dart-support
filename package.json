@@ -65,17 +65,17 @@
       "view/item/context": [
         {
           "command": "dart-build-runner.build",
-          "when": "view == dart-build-runner-view && viewItem == file && resourceDirname in dart-build-runner.notRunning",
+          "when": "view == dbr-view && viewItem in dbr.hasBuildRunnerDep && resourceDirname in dbr.notRunning",
           "group": "inline"
         },
         {
           "command": "dart-build-runner.watch",
-          "when": "view == dart-build-runner-view && viewItem == file && resourceDirname in dart-build-runner.notRunning",
+          "when": "view == dbr-view && viewItem in dbr.hasBuildRunnerDep && resourceDirname in dbr.notRunning",
           "group": "inline"
         },
         {
           "command": "dart-build-runner.terminate",
-          "when": "view == dart-build-runner-view && viewItem == file && resourceDirname in dart-build-runner.running",
+          "when": "view == dbr-view && resourceDirname in dbr.running",
           "group": "inline"
         }
       ]
@@ -83,7 +83,7 @@
     "views": {
       "explorer": [
         {
-          "id": "dart-build-runner-view",
+          "id": "dbr-view",
           "name": "BUILD RUNNER - PROJECTS"
         }
       ]

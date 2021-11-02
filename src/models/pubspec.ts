@@ -26,5 +26,6 @@ export interface PubspecTreePubspecModel {
 export interface TreeModel {
   name: string;
   uri: vscode.Uri;
+  hasBuildRunnerDep: boolean;
   children?: TreeModel[];
 }
