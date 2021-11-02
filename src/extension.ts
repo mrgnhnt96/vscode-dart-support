@@ -24,17 +24,25 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   };
 
-  register(`${packageName}.build`, (args: NestTreeItem) =>
+  register(`${packageName}.build`, (args: NestTreeItem | vscode.Uri) =>
     Process.instance.runBuildRunner(args, BuildType.build)
   );
 
-  register(`${packageName}.clean-build`, (args: NestTreeItem) =>
+  register(`${packageName}.clean-build`, (args: NestTreeItem | vscode.Uri) =>
     Process.instance.runBuildRunner(args, BuildType.clean)
   );
 
-  register(`${packageName}.watch`, (args: NestTreeItem) =>
+  register(`${packageName}.watch`, (args: NestTreeItem | vscode.Uri) =>
     Process.instance.runBuildRunner(args, BuildType.watch)
   );
+
+  // register(`${packageName}.filter-build`, (uri: vscode.Uri) =>
+  //   Process.instance.runBuildRunnerFiltered(uri, BuildType.build)
+  // );
+
+  // register(`${packageName}.filter-watch`, (uri: vscode.Uri) =>
+  //   Process.instance.runBuildRunnerFiltered(uri, BuildType.watch)
+  // );
 
   register(
     `${packageName}.get-dependencies`,

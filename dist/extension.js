@@ -35,6 +35,12 @@ function activate(context) {
         register(`${packageName}.build`, (args) => process_1.Process.instance.runBuildRunner(args, enums_1.BuildType.build));
         register(`${packageName}.clean-build`, (args) => process_1.Process.instance.runBuildRunner(args, enums_1.BuildType.clean));
         register(`${packageName}.watch`, (args) => process_1.Process.instance.runBuildRunner(args, enums_1.BuildType.watch));
+        // register(`${packageName}.filter-build`, (uri: vscode.Uri) =>
+        //   Process.instance.runBuildRunnerFiltered(uri, BuildType.build)
+        // );
+        // register(`${packageName}.filter-watch`, (uri: vscode.Uri) =>
+        //   Process.instance.runBuildRunnerFiltered(uri, BuildType.watch)
+        // );
         register(`${packageName}.get-dependencies`, (args) => {
             // triggered by the view
             if (args === undefined) {
@@ -121,12 +127,26 @@ const extension_1 = __webpack_require__(0);
 const remove_duplicates_1 = __webpack_require__(27);
 const vscode_helper_1 = __webpack_require__(26);
 const enums_1 = __webpack_require__(24);
+const get_filters_1 = __webpack_require__(28);
 const tree_1 = __webpack_require__(23);
 const util_1 = __webpack_require__(6);
 const pidtree = __webpack_require__(7);
 const path = __webpack_require__(25);
 class Process {
     constructor() {
+        this.getTitle = (uri) => {
+            if (uri.endsWith(path.sep)) {
+                const segments = uri.split(path.sep);
+                return segments[segments.length - 2];
+            }
+            else if (uri.endsWith(".dart")) {
+                const segments = uri.split(path.sep);
+                return segments
+                    .join(path.sep)
+                    .slice(0, -segments[segments.length - 1].length);
+            }
+            return uri.split(path.sep).pop();
+        };
         this.processes = {};
         this.outputs = {};
     }
@@ -162,12 +182,9 @@ class Process {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ["pub", "get"];
             const uris = (0, remove_duplicates_1.removeDuplicates)(tree_1.NestTreeProvider.instance.uris);
-            const getTitle = (uri) => {
-                return uri.split(path.sep).pop();
-            };
             const details = uris.map((uri) => {
                 const data = {
-                    title: getTitle(uri),
+                    title: this.getTitle(uri),
                     uri: uri,
                 };
                 return data;
@@ -183,12 +200,9 @@ class Process {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ["pub", "get"];
             const uris = (0, remove_duplicates_1.removeDuplicates)(tree_1.NestTreeProvider.instance.getUrisOf(data));
-            const getTitle = (uri) => {
-                return uri.split(path.sep).pop();
-            };
             const details = uris.map((uri) => {
                 const data = {
-                    title: getTitle(uri),
+                    title: this.getTitle(uri),
                     uri: uri,
                 };
                 return data;
@@ -222,8 +236,45 @@ class Process {
             if (type !== enums_1.BuildType.clean) {
                 args.push("--delete-conflicting-outputs");
             }
-            const details = this.getProcessData(data);
-            (0, vscode_helper_1.notify)(`Running build_runner ${type} for ${data.title}`);
+            let details;
+            if (data instanceof tree_1.NestTreeItem) {
+                details = this.getProcessData(data);
+            }
+            else {
+                const segments = data.fsPath.split(path.sep + "lib" + path.sep);
+                const uri = segments[0];
+                const title = this.getTitle(uri);
+                details = {
+                    title: title,
+                    uri: uri,
+                };
+            }
+            (0, vscode_helper_1.notify)(`Running build_runner ${type} for ${details.title}`);
+            yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
+        });
+    }
+    /// can't get to work right...
+    runBuildRunnerFiltered(uri, type) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const filterData = (0, get_filters_1.getFilters)(uri);
+            if (filterData === null || filterData.filter === null) {
+                (0, vscode_helper_1.notify)("build_runner needs a dart file to run!");
+                return;
+            }
+            const args = [
+                "pub",
+                "run",
+                "build_runner",
+                type,
+                "--delete-conflicting-outputs",
+                filterData.filter,
+            ];
+            const title = this.getTitle(filterData.uri);
+            const details = {
+                title: title,
+                uri: filterData.uri,
+            };
+            (0, vscode_helper_1.notify)(`[${title}]: Running build_runner ${type} (Filtered)`);
             yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
         });
     }
@@ -263,43 +314,42 @@ class Process {
             });
             output.show();
             this.setContext();
-            output.write(cwd);
-            const useFlutter = (0, vscode_helper_1.readSetting)("useFlutterForBuildRunner");
+            const useFlutter = (0, vscode_helper_1.readSetting)("use_flutter_for_build_runner");
             const command = useFlutter ? "flutter" : "dart";
-            output.write([command, ...args].join(" "));
-            yield loading([command, ...args].join(" "));
+            const pwdProcess = childProcess
+                .exec("pwd", {
+                cwd: cwd,
+            }, function (error, stdout, stderr) {
+                output.write("[CWD]:", stdout, "\r\n");
+            })
+                .on("exit", (code) => {
+                pwdProcess.kill();
+            });
+            const commandStr = [command, ...args].join(" ");
+            output.write("[COMMAND]:", commandStr, "\r\n");
+            yield loading(commandStr);
             process = childProcess.spawn(command, args, {
-                cwd,
+                cwd: cwd,
                 shell: os.platform() === "win32",
             });
             this.processes[cwd] = process;
             this.setContext();
             const getMessage = (value) => value.toString().split("\n").join(" ");
-            (_b = process.stdout) === null || _b === void 0 ? void 0 : _b.on("data", (value) => __awaiter(this, void 0, void 0, function* () {
+            const handleMessage = (value, isFinished = false) => __awaiter(this, void 0, void 0, function* () {
                 const message = getMessage(value);
-                const finished = isFinished(message);
-                yield loading(message, finished);
+                yield loading(message, isFinished);
                 output.write(message);
-            }));
-            process.on("error", (value) => __awaiter(this, void 0, void 0, function* () {
-                const message = getMessage(value);
-                yield loading(message);
-                output.write(message);
-            }));
-            (_c = process.stderr) === null || _c === void 0 ? void 0 : _c.on("data", (value) => __awaiter(this, void 0, void 0, function* () {
-                const message = getMessage(value);
-                yield loading(message);
-                output.write(message);
-            }));
+            });
+            (_b = process.stdout) === null || _b === void 0 ? void 0 : _b.on("data", (value) => __awaiter(this, void 0, void 0, function* () { return handleMessage(value, isFinished(value)); }));
+            process.on("error", (value) => __awaiter(this, void 0, void 0, function* () { return handleMessage(value); }));
+            (_c = process.stderr) === null || _c === void 0 ? void 0 : _c.on("data", (value) => __awaiter(this, void 0, void 0, function* () { return handleMessage(value); }));
             process.on("exit", (code) => __awaiter(this, void 0, void 0, function* () {
                 var _d;
                 (_d = this.processes[cwd]) === null || _d === void 0 ? void 0 : _d.kill();
                 yield loading(`exit ${code}`, true);
                 output === null || output === void 0 ? void 0 : output.write(`exit ${code}`);
                 output === null || output === void 0 ? void 0 : output.invalidate();
-                console.log("closing on finish?", closeOnFinish);
                 if (closeOnFinish) {
-                    console.log("closing!", cwd);
                     output === null || output === void 0 ? void 0 : output.close();
                 }
                 delete this.processes[cwd];
@@ -417,9 +467,10 @@ const createOutput = (title, onDispose) => __awaiter(void 0, void 0, void 0, fun
             terminal.dispose();
         },
         isShow,
-        write: (value) => {
+        write: (value, ...optionalParams) => {
             return (!invalid &&
-                writeEmitter.fire(value.replace(/^   \w/g, "\r\n  ") + "\r\n"));
+                writeEmitter.fire([value, ...optionalParams].join(" ").replace(/^   \w/g, "\r\n  ") +
+                    "\r\n"));
         },
         activate: () => (invalid = false),
         invalidate: () => {
@@ -7734,6 +7785,67 @@ function removeDuplicates(arg) {
     return temp;
 }
 exports.removeDuplicates = removeDuplicates;
+
+
+/***/ }),
+/* 28 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getFilters = void 0;
+const path = __webpack_require__(25);
+const vscode = __webpack_require__(1);
+function getFilters(uri) {
+    var _a, _b;
+    /// Get the current editor file uri and path
+    uri = uri !== null && uri !== void 0 ? uri : (_a = vscode.window.activeTextEditor) === null || _a === void 0 ? void 0 : _a.document.uri;
+    const empty = {
+        filter: null,
+        uri: "",
+    };
+    const uriPath = uri === null || uri === void 0 ? void 0 : uri.path;
+    const sep = path.sep;
+    /// Guard against welcome screen
+    const isWelcomeScreen = uriPath === undefined;
+    if (isWelcomeScreen) {
+        return null;
+    }
+    /// Guard against untitled files
+    const isUntitled = (_b = vscode.window.activeTextEditor) === null || _b === void 0 ? void 0 : _b.document.isUntitled;
+    if (isUntitled) {
+        return empty;
+    }
+    /// Guard against no workspace name
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    const workspaceName = workspaceFolder === null || workspaceFolder === void 0 ? void 0 : workspaceFolder.name;
+    if (workspaceName === undefined) {
+        return empty;
+    }
+    /// Guard against no workspace path
+    const workspacePath = workspaceFolder === null || workspaceFolder === void 0 ? void 0 : workspaceFolder.uri.path;
+    if (workspacePath === undefined) {
+        [];
+    }
+    const relativePath = uriPath === null || uriPath === void 0 ? void 0 : uriPath.replace(workspacePath, "");
+    const segments = relativePath === null || relativePath === void 0 ? void 0 : relativePath.split(sep).filter((e) => e !== "");
+    /// Guard against no top level folder
+    const hasTopLevelFolder = segments.length > 1;
+    if (!hasTopLevelFolder) {
+        return empty;
+    }
+    const segmentsWithoutFilename = [...segments].slice(0, segments.length - 1);
+    let cwd = `${workspacePath}${sep}${segmentsWithoutFilename.join(sep)}`;
+    const libBasedPath = "lib" + sep + cwd.split(`${sep}lib${sep}`)[1] + sep;
+    cwd = cwd.split(`${sep}lib${sep}`)[0] + sep;
+    const baseFilter = {
+        filter: `--build-filter="${libBasedPath}*.dart"`,
+        uri: cwd,
+    };
+    return baseFilter;
+}
+exports.getFilters = getFilters;
 
 
 /***/ })

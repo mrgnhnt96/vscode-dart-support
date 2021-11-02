@@ -31,9 +31,9 @@
   "contributes": {
     "configuration": [
       {
-        "title": "Dart Build Runner",
+        "title": "Build Runner",
         "properties": {
-          "dbr.useFlutterForBuildRunner": {
+          "dart-support.use_flutter_for_build_runner": {
             "type": "boolean",
             "enum": [
               true,
@@ -49,19 +49,19 @@
       {
         "category": "dart-build-runner",
         "command": "dart-build-runner.build",
-        "title": "Build",
+        "title": "build_runner: Build",
         "icon": "$(play)"
       },
       {
         "category": "dart-build-runner",
         "command": "dart-build-runner.watch",
-        "title": "Watch",
+        "title": "build_runner: Watch",
         "icon": "$(sync)"
       },
       {
         "category": "dart-build-runner",
         "command": "dart-build-runner.clean-build",
-        "title": "Clear build_runner Cache"
+        "title": "build_runner: Clear Cache"
       },
       {
         "category": "dart-build-runner",
@@ -136,57 +136,74 @@
           "when": "false"
         }
       ],
+      "explorer/context": [
+        {
+          "command": "dart-build-runner.build",
+          "group": "dart-support@1",
+          "when": "explorerResourceIsFolder || resourceLangId == dart"
+        },
+        {
+          "command": "dart-build-runner.watch",
+          "group": "dart-support@2",
+          "when": "explorerResourceIsFolder || resourceLangId == dart"
+        },
+        {
+          "command": "dart-build-runner.clean-build",
+          "group": "dart-support@3",
+          "when": "explorerResourceIsFolder || resourceLangId == dart"
+        }
+      ],
       "view/title": [
         {
           "command": "dart-build-runner.get-dependencies",
-          "when": "view == dbr-view",
+          "when": "view == dart-support-view",
           "group": "navigation@1"
         },
         {
           "command": "dart-build-runner.refresh",
-          "when": "view == dbr-view",
+          "when": "view == dart-support-view",
           "group": "navigation@2"
         }
       ],
       "view/item/context": [
         {
           "command": "dart-build-runner.build",
-          "when": "view == dbr-view && viewItem in dbr.hasBuildRunnerDep && viewItem in dbr.notRunning",
+          "when": "view == dart-support-view && viewItem in dart-support.hasBuildRunnerDep && viewItem in dart-support.notRunning",
           "group": "inline"
         },
         {
           "command": "dart-build-runner.watch",
-          "when": "view == dbr-view && viewItem in dbr.hasBuildRunnerDep && viewItem in dbr.notRunning",
+          "when": "view == dart-support-view && viewItem in dart-support.hasBuildRunnerDep && viewItem in dart-support.notRunning",
           "group": "inline"
         },
         {
           "command": "dart-build-runner.get-dependencies",
-          "when": "view == dbr-view",
+          "when": "view == dart-support-view",
           "group": "inline@3"
         },
         {
           "command": "dart-build-runner.upgrade-dependencies",
-          "when": "view == dbr-view && file in viewItem",
+          "when": "view == dart-support-view && viewItem =~ /^file-.*/",
           "group": "@2"
         },
         {
           "command": "dart-build-runner.upgrade-dependencies-major",
-          "when": "view == dbr-view && file in viewItem",
+          "when": "view == dart-support-view && viewItem =~ /^file-.*/",
           "group": "@2"
         },
         {
           "command": "dart-build-runner.terminate",
-          "when": "view == dbr-view && viewItem in dbr.running",
+          "when": "view == dart-support-view && viewItem in dart-support.running",
           "group": "inline"
         },
         {
           "command": "dart-build-runner.clean-build",
-          "when": "view == dbr-view && file in viewItem",
+          "when": "view == dart-support-view && viewItem =~ /^file-.*/",
           "group": "@3"
         },
         {
           "command": "dart-build-runner.open-terminal",
-          "when": "view == dbr-view",
+          "when": "view == dart-support-view",
           "group": "@1"
         }
       ]
@@ -194,7 +211,7 @@
     "views": {
       "explorer": [
         {
-          "id": "dbr-view",
+          "id": "dart-support-view",
           "name": "BUILD RUNNER - PROJECTS"
         }
       ]

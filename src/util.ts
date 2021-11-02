@@ -11,7 +11,7 @@ export interface OutputTask {
   show: () => void;
   hide: () => void;
   isShow: () => Promise<boolean>;
-  write: (value: string) => void;
+  write: (value: string, ...optionalParams: string[]) => void;
   activate: () => void;
   invalidate: () => void;
   close: () => void;
@@ -51,8 +51,10 @@ export const createOutput = async (
 
   const isShow = async () => {
     const activeId = await vscode.window.activeTerminal?.processId;
+
     return activeId === id;
   };
+
   return {
     id: id,
     show: terminal.show,
@@ -62,10 +64,13 @@ export const createOutput = async (
       terminal.dispose();
     },
     isShow,
-    write: (value: string) => {
+    write: (value: string, ...optionalParams: string[]) => {
       return (
         !invalid &&
-        writeEmitter.fire(value.replace(/^   \w/g, "\r\n  ") + "\r\n")
+        writeEmitter.fire(
+          [value, ...optionalParams].join(" ").replace(/^   \w/g, "\r\n  ") +
+            "\r\n"
+        )
       );
     },
     activate: () => (invalid = false),

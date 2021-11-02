@@ -6,6 +6,7 @@ import { setPubspecSettings } from "./extension";
 import { removeDuplicates } from "./helpers/remove_duplicates";
 import { notify, readSetting } from "./helpers/vscode_helper";
 import { BuildType } from "./models/enums";
+import { getFilters } from "./get_filters";
 import { NestTreeItem, NestTreeProvider } from "./tree";
 import { createLoading, createOutput, LoadingTask, OutputTask } from "./util";
 
@@ -47,6 +48,22 @@ export class Process {
     };
   }
 
+  private getTitle = (uri: string) => {
+    if (uri.endsWith(path.sep)) {
+      const segments = uri.split(path.sep);
+
+      return segments[segments.length - 2];
+    } else if (uri.endsWith(".dart")) {
+      const segments = uri.split(path.sep);
+
+      return segments
+        .join(path.sep)
+        .slice(0, -segments[segments.length - 1].length);
+    }
+
+    return uri.split(path.sep).pop()!;
+  };
+
   setContext() {
     setPubspecSettings(this.processes);
   }
@@ -71,13 +88,9 @@ export class Process {
 
     const uris = removeDuplicates(NestTreeProvider.instance.uris);
 
-    const getTitle = (uri: string) => {
-      return uri.split(path.sep).pop()!;
-    };
-
     const details = uris.map((uri) => {
       const data: ProcessData = {
-        title: getTitle(uri),
+        title: this.getTitle(uri),
         uri: uri,
       };
 
@@ -103,13 +116,9 @@ export class Process {
 
     const uris = removeDuplicates(NestTreeProvider.instance.getUrisOf(data));
 
-    const getTitle = (uri: string) => {
-      return uri.split(path.sep).pop()!;
-    };
-
     const details = uris.map((uri) => {
       const data: ProcessData = {
-        title: getTitle(uri),
+        title: this.getTitle(uri),
         uri: uri,
       };
 
@@ -154,16 +163,64 @@ export class Process {
     );
   }
 
-  async runBuildRunner(data: NestTreeItem, type: BuildType) {
+  async runBuildRunner(data: NestTreeItem | vscode.Uri, type: BuildType) {
     const args = ["pub", "run", "build_runner", type];
 
     if (type !== BuildType.clean) {
       args.push("--delete-conflicting-outputs");
     }
 
-    const details = this.getProcessData(data);
+    let details: ProcessData;
 
-    notify(`Running build_runner ${type} for ${data.title}`);
+    if (data instanceof NestTreeItem) {
+      details = this.getProcessData(data);
+    } else {
+      const segments = data.fsPath.split(path.sep + "lib" + path.sep);
+      const uri = segments[0];
+      const title = this.getTitle(uri);
+
+      details = {
+        title: title,
+        uri: uri,
+      };
+    }
+
+    notify(`Running build_runner ${type} for ${details.title}`);
+
+    await this.create(details, args, (message) =>
+      message.includes("Succeeded after") ? true : false
+    );
+  }
+
+  /// can't get to work right...
+  async runBuildRunnerFiltered(
+    uri: vscode.Uri,
+    type: BuildType.build | BuildType.watch
+  ) {
+    const filterData = getFilters(uri);
+
+    if (filterData === null || filterData.filter === null) {
+      notify("build_runner needs a dart file to run!");
+      return;
+    }
+
+    const args = [
+      "pub",
+      "run",
+      "build_runner",
+      type,
+      "--delete-conflicting-outputs",
+      filterData.filter,
+    ];
+
+    const title = this.getTitle(filterData.uri);
+
+    const details: ProcessData = {
+      title: title,
+      uri: filterData.uri,
+    };
+
+    notify(`[${title}]: Running build_runner ${type} (Filtered)`);
 
     await this.create(details, args, (message) =>
       message.includes("Succeeded after") ? true : false
@@ -221,18 +278,32 @@ export class Process {
 
     this.setContext();
 
-    output.write(cwd);
-
-    const useFlutter = readSetting("useFlutterForBuildRunner") as boolean;
+    const useFlutter = readSetting("use_flutter_for_build_runner") as boolean;
 
     const command = useFlutter ? "flutter" : "dart";
 
-    output.write([command, ...args].join(" "));
+    const pwdProcess = childProcess
+      .exec(
+        "pwd",
+        {
+          cwd: cwd,
+        },
+        function (error, stdout, stderr) {
+          output.write("[CWD]:", stdout, "\r\n");
+        }
+      )
+      .on("exit", (code) => {
+        pwdProcess.kill();
+      });
 
-    await loading([command, ...args].join(" "));
+    const commandStr = [command, ...args].join(" ");
+
+    output.write("[COMMAND]:", commandStr, "\r\n");
+
+    await loading(commandStr);
 
     process = childProcess.spawn(command, args, {
-      cwd,
+      cwd: cwd,
       shell: os.platform() === "win32",
     });
 
@@ -242,30 +313,21 @@ export class Process {
     const getMessage = (value: any) =>
       (value.toString() as string).split("\n").join(" ");
 
-    process.stdout?.on("data", async (value) => {
-      const message = getMessage(value);
-      const finished = isFinished(message);
-
-      await loading(message, finished);
-
-      output.write(message);
-    });
-
-    process.on("error", async (value) => {
+    const handleMessage = async (value: any, isFinished: boolean = false) => {
       const message = getMessage(value);
 
-      await loading(message);
+      await loading(message, isFinished);
 
       output.write(message);
-    });
+    };
 
-    process.stderr?.on("data", async (value) => {
-      const message = getMessage(value);
+    process.stdout?.on("data", async (value) =>
+      handleMessage(value, isFinished(value))
+    );
 
-      await loading(message);
+    process.on("error", async (value) => handleMessage(value));
 
-      output.write(message);
-    });
+    process.stderr?.on("data", async (value) => handleMessage(value));
 
     process.on("exit", async (code) => {
       this.processes[cwd]?.kill();
@@ -276,9 +338,7 @@ export class Process {
 
       output?.invalidate();
 
-      console.log("closing on finish?", closeOnFinish);
       if (closeOnFinish) {
-        console.log("closing!", cwd);
         output?.close();
       }
 
@@ -312,6 +372,7 @@ export class Process {
         childProcess.exec(`${kill} ${cpid}`);
       });
     }
+
     await new Promise<void>((resolve) => {
       const numid = setInterval(() => {
         if (!this.processes[cwd]) {
