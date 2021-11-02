@@ -3,14 +3,14 @@ import * as fs from "fs";
 import * as os from "os";
 import * as vscode from "vscode";
 import { setPubspecSettings } from "./extension";
-import { readSetting } from "./helpers/vscode_helper";
+import { removeDuplicates } from "./helpers/remove_duplicates";
+import { notify, readSetting } from "./helpers/vscode_helper";
 import { BuildType } from "./models/enums";
 import { NestTreeItem, NestTreeProvider } from "./tree";
 import { createLoading, createOutput, LoadingTask, OutputTask } from "./util";
 
 import pidtree = require("pidtree");
 import path = require("path");
-import { removeDuplicates } from "./helpers/remove_duplicates";
 
 interface Processes {
   [key: string]: childProcess.ChildProcess;
@@ -32,7 +32,7 @@ export class Process {
     return this._instance;
   }
 
-  getDirPath(uri: vscode.Uri) {
+  private getDirPath(uri: vscode.Uri) {
     return fs.statSync(uri.fsPath).isFile()
       ? vscode.Uri.joinPath(uri, `..${path.sep}`).fsPath
       : uri.fsPath;
@@ -59,6 +59,8 @@ export class Process {
 
     const details = this.getProcessData(data);
 
+    notify(`[${data.title}]: Getting dependencies`);
+
     await this.create(details, args, (message) =>
       message.includes("Succeeded after") ? true : false
     );
@@ -81,6 +83,8 @@ export class Process {
 
       return data;
     });
+
+    notify("[All]: Getting dependencies");
 
     const promises = details.map((data) => {
       return this.create(
@@ -112,6 +116,8 @@ export class Process {
       return data;
     });
 
+    notify(`[${data.title} (workspace)]: Getting dependencies`);
+
     const promises = details.map((data) => {
       return this.create(
         data,
@@ -129,6 +135,8 @@ export class Process {
 
     const details = this.getProcessData(data);
 
+    notify(`[${data.title}]: Upgrading Dependencies`);
+
     await this.create(details, args, (message) =>
       message.includes("Succeeded after") ? true : false
     );
@@ -138,6 +146,8 @@ export class Process {
     const args = ["pub", "upgrade", "--major-versions"];
 
     const details = this.getProcessData(data);
+
+    notify(`[${data.title}]: Upgrading Dependencies (Major)`);
 
     await this.create(details, args, (message) =>
       message.includes("Succeeded after") ? true : false
@@ -152,6 +162,8 @@ export class Process {
     }
 
     const details = this.getProcessData(data);
+
+    notify(`Running build_runner ${type} for ${data.title}`);
 
     await this.create(details, args, (message) =>
       message.includes("Succeeded after") ? true : false

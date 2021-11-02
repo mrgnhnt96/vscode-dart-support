@@ -118,13 +118,13 @@ const fs = __webpack_require__(4);
 const os = __webpack_require__(5);
 const vscode = __webpack_require__(1);
 const extension_1 = __webpack_require__(0);
+const remove_duplicates_1 = __webpack_require__(27);
 const vscode_helper_1 = __webpack_require__(26);
 const enums_1 = __webpack_require__(24);
 const tree_1 = __webpack_require__(23);
 const util_1 = __webpack_require__(6);
 const pidtree = __webpack_require__(7);
 const path = __webpack_require__(25);
-const remove_duplicates_1 = __webpack_require__(27);
 class Process {
     constructor() {
         this.processes = {};
@@ -154,6 +154,7 @@ class Process {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ["pub", "get"];
             const details = this.getProcessData(data);
+            (0, vscode_helper_1.notify)(`[${data.title}]: Getting dependencies`);
             yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
         });
     }
@@ -171,6 +172,7 @@ class Process {
                 };
                 return data;
             });
+            (0, vscode_helper_1.notify)("[All]: Getting dependencies");
             const promises = details.map((data) => {
                 return this.create(data, args, (message) => (message.includes("Succeeded after") ? true : false), true);
             });
@@ -191,6 +193,7 @@ class Process {
                 };
                 return data;
             });
+            (0, vscode_helper_1.notify)(`[${data.title} (workspace)]: Getting dependencies`);
             const promises = details.map((data) => {
                 return this.create(data, args, (message) => (message.includes("Succeeded after") ? true : false), true);
             });
@@ -201,6 +204,7 @@ class Process {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ["pub", "upgrade"];
             const details = this.getProcessData(data);
+            (0, vscode_helper_1.notify)(`[${data.title}]: Upgrading Dependencies`);
             yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
         });
     }
@@ -208,6 +212,7 @@ class Process {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ["pub", "upgrade", "--major-versions"];
             const details = this.getProcessData(data);
+            (0, vscode_helper_1.notify)(`[${data.title}]: Upgrading Dependencies (Major)`);
             yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
         });
     }
@@ -218,6 +223,7 @@ class Process {
                 args.push("--delete-conflicting-outputs");
             }
             const details = this.getProcessData(data);
+            (0, vscode_helper_1.notify)(`Running build_runner ${type} for ${data.title}`);
             yield this.create(details, args, (message) => message.includes("Succeeded after") ? true : false);
         });
     }
@@ -7689,7 +7695,7 @@ module.exports = require("path");
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.addSetting = exports.readSetting = void 0;
+exports.notify = exports.addSetting = exports.readSetting = void 0;
 const vscode = __webpack_require__(1);
 function readSetting(key) {
     return vscode.workspace.getConfiguration().get("dbr." + key);
@@ -7699,6 +7705,10 @@ function addSetting(key, value) {
     return vscode.commands.executeCommand("setContext", key, value);
 }
 exports.addSetting = addSetting;
+function notify(message) {
+    return vscode.window.showInformationMessage(message);
+}
+exports.notify = notify;
 
 
 /***/ }),
