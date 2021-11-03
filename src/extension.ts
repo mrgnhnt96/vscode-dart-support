@@ -85,7 +85,8 @@ export async function activate(context: vscode.ExtensionContext) {
   await loadFiles();
 }
 
-async function loadFiles() {
+export async function loadFiles() {
+  console.log("Scanning workspace for pubspec.(yaml or yml) files");
   const nestList = await scanWorkspaceForPubspecs();
 
   console.log("all pubspec", nestList);
@@ -93,6 +94,7 @@ async function loadFiles() {
   NestTreeProvider.instance.setTreeList(nestList);
 
   setPubspecSettings({});
+  console.log("Scan complete");
 }
 
 export function setPubspecSettings(arg: { [key: string]: any }) {
