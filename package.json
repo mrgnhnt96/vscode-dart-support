@@ -256,7 +256,7 @@
     }
   },
   "scripts": {
-    "package": "npm run prep && vsce package -o build/",
+    "package": "vsce package -o build/",
     "publish": "vsce publish -i build/dart-support-0.0.2.vsix",
     "vscode:prepublish": "npm run -S esbuild-base -- --minify",
     "esbuild-base": "rimraf out && esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
