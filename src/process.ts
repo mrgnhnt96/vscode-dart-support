@@ -17,6 +17,11 @@ interface Processes {
   [key: string]: childProcess.ChildProcess;
 }
 
+enum TriggerType {
+  individual = "individual",
+  group = "group",
+}
+
 interface ProcessData {
   title: string;
   uri: string;
@@ -78,15 +83,18 @@ export class Process {
 
     notify(`[${data.title}]: Getting dependencies`);
 
-    await this.create(details, args, (message) =>
-      message.includes("Succeeded after") ? true : false
+    await this.create(
+      details,
+      args,
+      (message) => (message.includes("Succeeded after") ? true : false),
+      TriggerType.individual
     );
   }
 
   async runGetAllDependencies() {
     const args = ["pub", "get"];
 
-    const uris = removeDuplicates(NestTreeProvider.instance.uris);
+    const uris = removeDuplicates(NestTreeProvider.instance.pubspecUris);
 
     const details = uris.map((uri) => {
       const data: ProcessData = {
@@ -97,14 +105,14 @@ export class Process {
       return data;
     });
 
-    notify("[All]: Getting dependencies");
+    notify(`[All: ${uris.length} Packages]: Getting dependencies`);
 
     const promises = details.map((data) => {
       return this.create(
         data,
         args,
         (message) => (message.includes("Succeeded after") ? true : false),
-        true
+        TriggerType.group
       );
     });
 
@@ -125,14 +133,14 @@ export class Process {
       return data;
     });
 
-    notify(`[${data.title} (workspace)]: Getting dependencies`);
+    notify(`[${data.title}: ${uris.length} Packages]: Getting dependencies`);
 
     const promises = details.map((data) => {
       return this.create(
         data,
         args,
         (message) => (message.includes("Succeeded after") ? true : false),
-        true
+        TriggerType.group
       );
     });
 
@@ -146,8 +154,11 @@ export class Process {
 
     notify(`[${data.title}]: Upgrading Dependencies`);
 
-    await this.create(details, args, (message) =>
-      message.includes("Succeeded after") ? true : false
+    await this.create(
+      details,
+      args,
+      (message) => (message.includes("Succeeded after") ? true : false),
+      TriggerType.individual
     );
   }
 
@@ -158,8 +169,11 @@ export class Process {
 
     notify(`[${data.title}]: Upgrading Dependencies (Major)`);
 
-    await this.create(details, args, (message) =>
-      message.includes("Succeeded after") ? true : false
+    await this.create(
+      details,
+      args,
+      (message) => (message.includes("Succeeded after") ? true : false),
+      TriggerType.individual
     );
   }
 
@@ -187,8 +201,11 @@ export class Process {
 
     notify(`Running build_runner ${type} for ${details.title}`);
 
-    await this.create(details, args, (message) =>
-      message.includes("Succeeded after") ? true : false
+    await this.create(
+      details,
+      args,
+      (message) => (message.includes("Succeeded after") ? true : false),
+      TriggerType.individual
     );
   }
 
@@ -199,7 +216,7 @@ export class Process {
   ) {
     const filterData = getFilters(uri);
 
-    if (filterData === null || filterData.filter === null) {
+    if (!filterData || !filterData.filter) {
       notify("build_runner needs a dart file to run!");
       return;
     }
@@ -222,8 +239,11 @@ export class Process {
 
     notify(`[${title}]: Running build_runner ${type} (Filtered)`);
 
-    await this.create(details, args, (message) =>
-      message.includes("Succeeded after") ? true : false
+    await this.create(
+      details,
+      args,
+      (message) => (message.includes("Succeeded after") ? true : false),
+      TriggerType.individual
     );
   }
 
@@ -237,7 +257,7 @@ export class Process {
     data: ProcessData,
     args: string[] = [],
     isFinished: (message: string) => boolean,
-    closeOnFinish: boolean = false
+    triggeredBy: TriggerType
   ) {
     const cwd = data.uri;
 
@@ -278,7 +298,7 @@ export class Process {
 
     this.setContext();
 
-    const useFlutter = readSetting("use_flutter_for_build_runner") as boolean;
+    const useFlutter = readSetting("useFlutterForCommands") as boolean;
 
     const command = useFlutter ? "flutter" : "dart";
 
@@ -288,11 +308,11 @@ export class Process {
         {
           cwd: cwd,
         },
-        function (error, stdout, stderr) {
+        function (_, stdout, __) {
           output.write("[CWD]:", stdout, "\r\n");
         }
       )
-      .on("exit", (code) => {
+      .on("exit", () => {
         pwdProcess.kill();
       });
 
@@ -337,6 +357,10 @@ export class Process {
       output?.write(`exit ${code}`);
 
       output?.invalidate();
+
+      const closeOnFinish = readSetting(
+        `closeTerminalsAfterUse.${triggeredBy}`
+      );
 
       if (closeOnFinish) {
         output?.close();
