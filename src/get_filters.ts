@@ -19,7 +19,7 @@ export function getFilters(uri: vscode.Uri | undefined): FilterData | null {
   const sep = path.sep;
 
   /// Guard against welcome screen
-  const isWelcomeScreen = uriPath === undefined;
+  const isWelcomeScreen = uriPath ? false : true;
   if (isWelcomeScreen) {
     return null;
   }
@@ -33,18 +33,18 @@ export function getFilters(uri: vscode.Uri | undefined): FilterData | null {
   /// Guard against no workspace name
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri!);
   const workspaceName = workspaceFolder?.name;
-  if (workspaceName === undefined) {
+  if (!workspaceName) {
     return empty;
   }
 
   /// Guard against no workspace path
   const workspacePath = workspaceFolder?.uri.path;
-  if (workspacePath === undefined) {
+  if (!workspacePath) {
     [];
   }
 
   const relativePath = uriPath?.replace(workspacePath!, "");
-  const segments = relativePath?.split(sep).filter((e) => e !== "");
+  const segments = relativePath?.split(sep).filter((e) => (e ? true : false));
 
   /// Guard against no top level folder
   const hasTopLevelFolder = segments!.length > 1;
