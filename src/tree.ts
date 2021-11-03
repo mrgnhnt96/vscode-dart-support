@@ -89,10 +89,14 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
       return;
     }
 
+    /*
+    ? This will flatten the treen if theres only 1 workfolder
+    ? but, this removes the ability to upgrade all pubspec.yaml files
+
     if (list.length === 1) {
       const items = list[0].children
-        ?.sort((a, b) => (a.name > b.name ? 1 : -1))
-        .map((e) => getTreeItems(e));
+      ?.sort((a, b) => (a.name > b.name ? 1 : -1))
+      .map((e) => getTreeItems(e));
 
       if (items) {
         this.treeList = items;
@@ -101,9 +105,14 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
       }
     } else {
       this.treeList = list
-        .sort((a, b) => (a.name > b.name ? 1 : -1))
-        .map((e) => getTreeItems(e));
+      .sort((a, b) => (a.name > b.name ? 1 : -1))
+      .map((e) => getTreeItems(e));
     }
+    */
+
+    this.treeList = list
+      .sort((a, b) => (a.name > b.name ? 1 : -1))
+      .map((e) => getTreeItems(e));
 
     const children: TreeModel[] = [];
 
