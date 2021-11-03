@@ -9,7 +9,8 @@ const readYaml = async (uri: vscode.Uri) => {
   let json: PubspecModel | null;
   try {
     json = yaml.parse(uint8Array.toString());
-    if (json !== null) {
+
+    if (json) {
       json["uri"] = uri;
     }
   } catch (error) {
@@ -42,9 +43,13 @@ export const scanFile = async (): Promise<TreeModel[]> => {
         );
       }
 
-      if (containsPath(".symlinks")) {
-        delete pubspecUris[i];
-      }
+      const restrictedPaths = [".symlinks", ".dart_tool"];
+
+      restrictedPaths.forEach((folder) => {
+        if (containsPath(folder)) {
+          delete pubspecUris[i];
+        }
+      });
     }
 
     const pubspecObjsPromises = pubspecUris.map((uri) => readYaml(uri));
@@ -56,13 +61,13 @@ export const scanFile = async (): Promise<TreeModel[]> => {
     // add setting to use dart or flutter
 
     //All pubspec.yaml that contain build runner
-    const effectList = pubspecObjs.filter((e) => e !== null && e !== undefined);
+    const effectList = pubspecObjs.filter((e) => (e ? true : false));
 
     const ret: TreeModel = {
       name: workspace.name!,
       uri: workspace.uri!,
       hasBuildRunnerDep: false,
-      children: effectList.map((e, i) => {
+      children: effectList.map((e) => {
         return {
           name: e!.name,
           uri: e!.uri,
