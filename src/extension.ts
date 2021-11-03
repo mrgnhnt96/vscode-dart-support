@@ -7,12 +7,10 @@ import { addSetting } from "./helpers/vscode_helper";
 import path = require("path");
 import { createTerminal } from "./util";
 
-const packageName = "dart-support";
+export const packageName = "dart-support";
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log(`${packageName} loading`);
-
-  vscode.window.registerTreeDataProvider(`dbr-view`, NestTreeProvider.instance);
+  console.log(`Running ${packageName}`);
 
   const register = (
     command: string,
@@ -48,15 +46,17 @@ export async function activate(context: vscode.ExtensionContext) {
     `${packageName}.get-dependencies`,
     (args: NestTreeItem | undefined) => {
       // triggered by the view
-      if (args === undefined) {
+      if (!args) {
         return Process.instance.runGetAllDependencies();
       }
 
       if (args.contextValue.includes("file")) {
-        Process.instance.runGetDependencies(args);
+        return Process.instance.runGetDependencies(args);
       } else if (args.contextValue.includes("dir")) {
-        Process.instance.runGetChildrenDependencies(args);
+        return Process.instance.runGetChildrenDependencies(args);
       }
+
+      return;
     }
   );
 
@@ -115,8 +115,8 @@ export function setPubspecSettings(arg: { [key: string]: any }) {
   console.log("not running", notRunning);
   console.log("running", running);
 
-  addSetting("dbr.running", running);
-  addSetting("dbr.notRunning", notRunning);
+  addSetting("running", running);
+  addSetting("notRunning", notRunning);
 
   NestTreeProvider.instance.refresh();
 }

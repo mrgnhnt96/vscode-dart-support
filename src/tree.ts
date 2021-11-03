@@ -1,8 +1,7 @@
 import { TreeModel } from "./models/pubspec";
 import * as vscode from "vscode";
-import { title } from "process";
-import { EDEADLK } from "constants";
 import path = require("path");
+import { packageName } from "./extension";
 
 type EventEmitterTreeItem = NestTreeItem | undefined | void;
 
@@ -22,25 +21,39 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
   private static _instance: NestTreeProvider;
 
   static get instance() {
-    this._instance ??= new NestTreeProvider();
+    if (!this._instance) {
+      this._instance ??= new NestTreeProvider();
+      vscode.window.registerTreeDataProvider(
+        `${packageName}-view`,
+        this._instance
+      );
+    }
     return this._instance;
   }
 
   private _uris: string[] = [];
+  private _pubspecUris: string[] = [];
 
-  private getDirPath = (uri: vscode.Uri) => {
+  private getDirPath = (uri: vscode.Uri, skipIfNotFile: boolean = false) => {
     const dir = uri.fsPath;
 
     const pubspecStr = `${path.sep}pubspec.yaml`;
 
     if (dir.endsWith(pubspecStr)) {
       return dir.slice(0, dir.length - pubspecStr.length);
+    } else if (skipIfNotFile) {
+      return;
     }
 
     return dir;
   };
 
-  readonly uris = this._uris;
+  public get uris() {
+    return this._uris;
+  }
+  public get pubspecUris() {
+    return this._pubspecUris;
+  }
 
   getUrisOf(item: NestTreeItem): string[] {
     const childrenDirs: string[] = [];
@@ -49,10 +62,20 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
       childrenDirs.push(...this.getUrisOf(e));
     });
 
-    return [this.getDirPath(item.resourceUri), ...childrenDirs];
+    const dir = this.getDirPath(item.resourceUri, true);
+
+    if (dir) {
+      return [dir, ...childrenDirs];
+    }
+
+    return childrenDirs;
   }
 
   setTreeList(list: TreeModel[]) {
+    // reset uris
+    this._uris = [];
+    this._pubspecUris = [];
+
     this.treeList = list
       .sort((a, b) => (a.name > b.name ? 1 : -1))
       .map((e) => recurse(e));
@@ -60,7 +83,7 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
     const children: TreeModel[] = [];
 
     list.forEach((nest) => {
-      this._uris.push(this.getDirPath(nest.uri));
+      this._uris.push(this.getDirPath(nest.uri)!);
 
       children.push(...(nest?.children ?? []));
     });
@@ -68,8 +91,14 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
     const filesWithBuildRunner: string[] = [];
 
     children.forEach((child) => {
-      const path = this.getDirPath(child.uri);
+      const path = this.getDirPath(child.uri)!;
       this._uris.push(path);
+
+      const pubspecPath = this.getDirPath(child.uri, true);
+
+      if (pubspecPath) {
+        this._pubspecUris.push(pubspecPath);
+      }
 
       if (child.hasBuildRunnerDep) {
         filesWithBuildRunner.push(`file-${child.name}`);
@@ -80,7 +109,7 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
 
     vscode.commands.executeCommand(
       "setContext",
-      "dbr.hasBuildRunnerDep",
+      `${packageName}.hasBuildRunnerDep`,
       filesWithBuildRunner
     );
 
