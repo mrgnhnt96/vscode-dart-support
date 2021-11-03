@@ -34,7 +34,7 @@
   ],
   "activationEvents": [
     "onLanguage:dart",
-    "workspaceContains:**/pubspec.yaml"
+    "workspaceContains:**/pubspec.{yaml,yml}"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -249,7 +249,8 @@
       "explorer": [
         {
           "id": "dart-support-view",
-          "name": "PROJECT PUBSPECS"
+          "name": "Dart Support",
+          "when": "dart-support.showView"
         }
       ]
     }

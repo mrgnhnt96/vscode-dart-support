@@ -1,3 +1,4 @@
+import path = require("path");
 import * as vscode from "vscode";
 import { NestTreeItem } from "./tree";
 
@@ -18,8 +19,8 @@ export interface OutputTask {
 }
 
 export const createTerminal = async (data: NestTreeItem) => {
-  const pubspecStr = "/pubspec.yaml";
-  const dir = data.resourceUri.fsPath.slice(0, -pubspecStr.length);
+  const pubspecStr = `${path.sep}pubspec`;
+  const dir = data.resourceUri.fsPath.split(pubspecStr)[0];
 
   const terminal = vscode.window.createTerminal({
     name: data.title,

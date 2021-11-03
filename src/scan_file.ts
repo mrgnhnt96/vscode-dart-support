@@ -30,7 +30,7 @@ export const scanFile = async (): Promise<TreeModel[]> => {
   const effectListPromises = workspaces.map(async (workspace) => {
     const relativePattern = new vscode.RelativePattern(
       workspace,
-      "**/pubspec.yaml"
+      "**/pubspec.{yml,yaml}"
     );
 
     // List of all pubspec.yaml files
