@@ -16,6 +16,7 @@ const readYaml = async (uri: vscode.Uri) => {
   } catch (error) {
     json = null;
   }
+
   return json;
 };
 
@@ -27,7 +28,7 @@ export const scanFile = async (): Promise<TreeModel[]> => {
   // Workspace folders
   const workspaces = vscode.workspace.workspaceFolders ?? [];
 
-  const effectListPromises = workspaces.map(async (workspace) => {
+  const folderPromises = workspaces.map(async (workspace) => {
     const relativePattern = new vscode.RelativePattern(
       workspace,
       "**/pubspec.{yml,yaml}"
@@ -56,12 +57,12 @@ export const scanFile = async (): Promise<TreeModel[]> => {
 
     const pubspecObjs = await Promise.all(pubspecObjsPromises);
 
-    // TODO: add setting to get all deps
-    // add setting to upgrade all deps
-    // add setting to use dart or flutter
-
     //All pubspec.yaml that contain build runner
     const effectList = pubspecObjs.filter((e) => (e ? true : false));
+
+    if (effectList.length === 0) {
+      return;
+    }
 
     const ret: TreeModel = {
       name: workspace.name!,
@@ -69,7 +70,7 @@ export const scanFile = async (): Promise<TreeModel[]> => {
       hasBuildRunnerDep: false,
       children: effectList.map((e) => {
         return {
-          name: e!.name,
+          name: e?.name ?? "NO_NAME",
           uri: e!.uri,
           hasBuildRunnerDep:
             Object.keys(e?.dependencies ?? {}).includes("build_runner") ||
@@ -77,10 +78,19 @@ export const scanFile = async (): Promise<TreeModel[]> => {
         };
       }),
     };
+
     return ret;
   });
 
-  const ret = Promise.all(effectListPromises);
+  const effects = await Promise.all(folderPromises);
+
+  const ret: TreeModel[] = [];
+
+  effects.forEach((e) => {
+    if (e) {
+      ret.push(e);
+    }
+  });
 
   return ret;
 };
