@@ -3,7 +3,12 @@
   "displayName": "Dart Support",
   "description": "Quick actions for dart projects, pubspec.yaml deps & build_runner",
   "publisher": "mrgnhnt96",
-  "version": "0.0.1",
+  "author": "Morgan Hunt <mrgnhnt96@gmail.com>",
+  "homepage": "https://github.com/mrgnhnt96/vscode-dart-support#readme",
+  "bugs": {
+    "url": "https://github.com/mrgnhnt96/vscode-dart-support/issues"
+  },
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.61.0"
   },
@@ -11,6 +16,7 @@
     "type": "git",
     "url": "https://github.com/mrgnhnt96/vscode-dart-support"
   },
+  "license": "MIT",
   "extensionDependencies": [
     "Dart-Code.dart-code"
   ],
@@ -30,20 +36,43 @@
     "onLanguage:dart",
     "workspaceContains:**/pubspec.yaml"
   ],
-  "main": "./dist/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "configuration": [
       {
         "title": "Build Runner",
         "properties": {
-          "dart-support.use_flutter_for_build_runner": {
+          "dart-support.useFlutterForCommands": {
+            "type": "boolean",
+            "enum": [
+              true,
+              false
+            ],
+            "default": true,
+            "description": "If true, flutter will be used to run pub commands."
+          }
+        }
+      },
+      {
+        "title": "Close Terminals",
+        "properties": {
+          "dart-support.closeTerminalsAfterUse.individual": {
             "type": "boolean",
             "enum": [
               true,
               false
             ],
             "default": false,
-            "description": "If true, flutter will be used to run build_runner."
+            "description": "If true, the psuedo terminal (triggered by a file), will close when the command has completed."
+          },
+          "dart-support.closeTerminalsAfterUse.group": {
+            "type": "boolean",
+            "enum": [
+              true,
+              false
+            ],
+            "default": false,
+            "description": "If true, psuedo terminals (triggered by folders or the 'PROJECT PUBSPECS' pane), will close when the command has completed."
           }
         }
       }
@@ -172,42 +201,47 @@
         {
           "command": "dart-support.build",
           "when": "view == dart-support-view && viewItem in dart-support.hasBuildRunnerDep && viewItem in dart-support.notRunning",
-          "group": "inline"
+          "group": "inline@0"
         },
         {
           "command": "dart-support.watch",
           "when": "view == dart-support-view && viewItem in dart-support.hasBuildRunnerDep && viewItem in dart-support.notRunning",
-          "group": "inline"
+          "group": "inline@1"
         },
         {
           "command": "dart-support.get-dependencies",
-          "when": "view == dart-support-view",
-          "group": "inline@3"
-        },
-        {
-          "command": "dart-support.upgrade-dependencies",
-          "when": "view == dart-support-view && viewItem =~ /^file-.*/",
-          "group": "@2"
-        },
-        {
-          "command": "dart-support.upgrade-dependencies-major",
-          "when": "view == dart-support-view && viewItem =~ /^file-.*/",
-          "group": "@2"
+          "when": "view == dart-support-view && viewItem in dart-support.notRunning",
+          "group": "inline@2"
         },
         {
           "command": "dart-support.terminate",
           "when": "view == dart-support-view && viewItem in dart-support.running",
-          "group": "inline"
+          "group": "inline@3"
+        },
+        {
+          "command": "dart-support.get-dependencies",
+          "when": "view == dart-support-view",
+          "group": "1_dep@0"
+        },
+        {
+          "command": "dart-support.upgrade-dependencies",
+          "when": "view == dart-support-view && viewItem =~ /^file-.*/",
+          "group": "1_dep@1"
+        },
+        {
+          "command": "dart-support.upgrade-dependencies-major",
+          "when": "view == dart-support-view && viewItem =~ /^file-.*/",
+          "group": "1_dep@2"
         },
         {
           "command": "dart-support.clean-build",
-          "when": "view == dart-support-view && viewItem =~ /^file-.*/",
-          "group": "@3"
+          "when": "view == dart-support-view && viewItem =~ /^file-.*/ && viewItem in dart-support.hasBuildRunnerDep",
+          "group": "2_br@2"
         },
         {
           "command": "dart-support.open-terminal",
           "when": "view == dart-support-view",
-          "group": "@1"
+          "group": "0_terminal@0"
         }
       ]
     },
@@ -215,17 +249,18 @@
       "explorer": [
         {
           "id": "dart-support-view",
-          "name": "BUILD RUNNER - PROJECTS"
+          "name": "PROJECT PUBSPECS"
         }
       ]
     }
   },
   "scripts": {
-    "publish": "vsce publish",
-    "vscode:prepublish": "npm run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
-    "esbuild": "npm run esbuild-base -- --sourcemap",
-    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "package": "npm run prep && vsce package -o build/",
+    "publish": "vsce publish -i build/dart-support-0.0.2.vsix",
+    "vscode:prepublish": "npm run -S esbuild-base -- --minify",
+    "esbuild-base": "rimraf out && esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "build": "npm run -S esbuild-base -- --sourcemap",
+    "watch": "npm run -S esbuild-base -- --sourcemap --watch",
     "test-compile": "tsc -p ./",
     "lint": "eslint src --ext ts"
   },
