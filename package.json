@@ -8,7 +8,7 @@
   "bugs": {
     "url": "https://github.com/mrgnhnt96/vscode-dart-support/issues"
   },
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.61.0"
   },
@@ -279,7 +279,7 @@
     "prettier": "^2.2.1",
     "ts-loader": "^8.1.0",
     "typescript": "^4.2.4",
-    "vsce": "^1.87.1",
+    "vsce": "^1.103.0",
     "vscode-test": "^1.5.2",
     "webpack": "^5.31.2",
     "webpack-cli": "^4.6.0"
