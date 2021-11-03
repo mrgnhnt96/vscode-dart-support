@@ -1,17 +1,18 @@
 import { TreeModel } from "./models/pubspec";
 import * as vscode from "vscode";
 import path = require("path");
-import { packageName } from "./extension";
+import { loadFiles, packageName } from "./extension";
+import { addSetting } from "./helpers/vscode_helper";
 
 type EventEmitterTreeItem = NestTreeItem | undefined | void;
 
-const recurse = (data: TreeModel): NestTreeItem => {
+const getTreeItems = (data: TreeModel): NestTreeItem => {
   return new NestTreeItem(
     data.name,
     data.uri,
     data.children
       ?.sort((a, b) => (a.name > b.name ? 1 : -1))
-      .map((e) => recurse(e))
+      .map((e) => getTreeItems(e))
   );
 };
 
@@ -19,15 +20,20 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
   private constructor() {}
 
   private static _instance: NestTreeProvider;
+  private static _fileWatcher: vscode.FileSystemWatcher | undefined;
 
   static get instance() {
     if (!this._instance) {
       this._instance ??= new NestTreeProvider();
+
       vscode.window.registerTreeDataProvider(
         `${packageName}-view`,
         this._instance
       );
+
+      this.setupFileWatcher();
     }
+
     return this._instance;
   }
 
@@ -37,10 +43,10 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
   private getDirPath = (uri: vscode.Uri, skipIfNotFile: boolean = false) => {
     const dir = uri.fsPath;
 
-    const pubspecStr = `${path.sep}pubspec.yaml`;
+    const pubspecStr = `${path.sep}pubspec.`;
 
-    if (dir.endsWith(pubspecStr)) {
-      return dir.slice(0, dir.length - pubspecStr.length);
+    if (dir.includes(pubspecStr)) {
+      return dir.split(pubspecStr)[0];
     } else if (skipIfNotFile) {
       return;
     }
@@ -76,9 +82,28 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
     this._uris = [];
     this._pubspecUris = [];
 
-    this.treeList = list
-      .sort((a, b) => (a.name > b.name ? 1 : -1))
-      .map((e) => recurse(e));
+    if (list.length > 0) {
+      addSetting("showView", true);
+    } else {
+      addSetting("showView", false);
+      return;
+    }
+
+    if (list.length === 1) {
+      const items = list[0].children
+        ?.sort((a, b) => (a.name > b.name ? 1 : -1))
+        .map((e) => getTreeItems(e));
+
+      if (items) {
+        this.treeList = items;
+      } else {
+        return;
+      }
+    } else {
+      this.treeList = list
+        .sort((a, b) => (a.name > b.name ? 1 : -1))
+        .map((e) => getTreeItems(e));
+    }
 
     const children: TreeModel[] = [];
 
@@ -114,6 +139,36 @@ export class NestTreeProvider implements vscode.TreeDataProvider<NestTreeItem> {
     );
 
     this.refresh();
+  }
+
+  private static setupFileWatcher() {
+    if (this._fileWatcher) {
+      return;
+    }
+
+    this._fileWatcher = vscode.workspace.createFileSystemWatcher(
+      "**/pubspec.{yml,yaml}"
+    );
+
+    const watcher = this._fileWatcher;
+
+    let canLoadFiles = true;
+
+    const refreshHandler = async () => {
+      if (!canLoadFiles) {
+        return;
+      }
+
+      canLoadFiles = false;
+      await loadFiles();
+      canLoadFiles = true;
+    };
+
+    watcher.onDidCreate(refreshHandler);
+
+    watcher.onDidChange(refreshHandler);
+
+    watcher.onDidDelete(refreshHandler);
   }
 
   private readonly eventEmitter =
