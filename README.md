@@ -24,6 +24,10 @@
 # TODO
 
 - [ ] Add tests
+- [ ] Add ability to use fvm
+  - [ ] Via list
+    - [ ] Can add & remove?
+- [ ] change the description of the tree item to the actual description of yaml
 - [ ] Add Quick Actions
   - [ ] Organize file (or sort deps only?)
   - [ ] Add Dependencies
