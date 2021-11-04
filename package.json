@@ -8,7 +8,7 @@
   "bugs": {
     "url": "https://github.com/mrgnhnt96/vscode-dart-support/issues"
   },
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.61.0"
   },
@@ -256,8 +256,8 @@
     }
   },
   "scripts": {
-    "package": "vsce package -o build/",
-    "publish": "vsce publish -i build/dart-support-0.0.3.vsix",
+    "package": "npm install && vsce package -o build/",
+    "publish": "vsce publish -i build/dart-support-0.0.4.vsix",
     "vscode:prepublish": "npm run -S esbuild-base -- --minify",
     "esbuild-base": "rimraf out && esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
     "build": "npm run -S esbuild-base -- --sourcemap",
