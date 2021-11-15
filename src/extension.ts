@@ -17,6 +17,7 @@ export async function activate(context: vscode.ExtensionContext) {
     callback: (...args: any[]) => any,
     thisArg?: any
   ) => {
+    console.log("Registering", command);
     return context.subscriptions.push(
       vscode.commands.registerCommand(command, callback, thisArg)
     );
@@ -50,9 +51,9 @@ export async function activate(context: vscode.ExtensionContext) {
         return Process.instance.runGetAllDependencies();
       }
 
-      if (args.contextValue.includes("file")) {
+      if (args.isFile) {
         return Process.instance.runGetDependencies(args);
-      } else if (args.contextValue.includes("dir")) {
+      } else if (args.isDir) {
         return Process.instance.runGetChildrenDependencies(args);
       }
 

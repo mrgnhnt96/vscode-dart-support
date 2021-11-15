@@ -206,8 +206,8 @@ export class NestTreeItem extends vscode.TreeItem {
       children ? vscode.TreeItemCollapsibleState.Expanded : undefined
     );
   }
-  private isDir = this.children ? true : false;
-
+  readonly isDir = this.children ? true : false;
+  readonly isFile = !this.isDir;
   readonly contextValue = `${this.isDir ? "dir" : "file"}-${this.title}`;
 
   //Commands when click on the tree map item
