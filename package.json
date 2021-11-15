@@ -8,7 +8,7 @@
   "bugs": {
     "url": "https://github.com/mrgnhnt96/vscode-dart-support/issues"
   },
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.61.0"
   },
@@ -259,7 +259,7 @@
     "lint": "eslint src --ext ts",
     "package": "npm install; npm run prod; vsce package -o build/",
     "prod": "webpack --mode production --devtool hidden-source-map",
-    "publish": "vsce publish -i build/dart-support-0.0.4.vsix",
+    "publish": "vsce publish -i build/dart-support-0.0.5.vsix",
     "vscode:prepublish": "npm run prod",
     "watch": "webpack --watch"
   },

@@ -1,3 +1,9 @@
+# [0.0.5] - [2021-11-15]
+
+- Fix bug with closing psuedo terminal
+  - Revert back to webpack compiler instead of es-build
+- Few minor enhancements & style fixes
+
 # [0.0.4] - [2021-11-03]
 
 ## Feature
@@ -5,6 +11,7 @@
 - Add check for name in pubspec.yaml
 - Add check if parent folder is empty
   - Hide if true
+
 # [0.0.3] - [2021-11-03]
 
 - Fix: could not find module
