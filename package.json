@@ -36,7 +36,7 @@
     "onLanguage:dart",
     "workspaceContains:**/pubspec.{yaml,yml}"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "configuration": [
       {
@@ -256,14 +256,12 @@
     }
   },
   "scripts": {
-    "package": "npm install && vsce package -o build/",
+    "lint": "eslint src --ext ts",
+    "package": "npm install; npm run prod; vsce package -o build/",
+    "prod": "webpack --mode production --devtool hidden-source-map",
     "publish": "vsce publish -i build/dart-support-0.0.4.vsix",
-    "vscode:prepublish": "npm run -S esbuild-base -- --minify",
-    "esbuild-base": "rimraf out && esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
-    "build": "npm run -S esbuild-base -- --sourcemap",
-    "watch": "npm run -S esbuild-base -- --sourcemap --watch",
-    "test-compile": "tsc -p ./",
-    "lint": "eslint src --ext ts"
+    "vscode:prepublish": "npm run prod",
+    "watch": "webpack --watch"
   },
   "devDependencies": {
     "@types/glob": "^7.1.3",
@@ -272,7 +270,6 @@
     "@types/vscode": "^1.61.0",
     "@typescript-eslint/eslint-plugin": "^4.22.0",
     "@typescript-eslint/parser": "^4.22.0",
-    "esbuild": "^0.13.12",
     "eslint": "^7.24.0",
     "glob": "^7.1.6",
     "mocha": "^8.3.2",
