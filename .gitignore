@@ -2,3 +2,4 @@ out/**
 *.vsix
 .playground/**
 .markdownlint.json
+dist/**
