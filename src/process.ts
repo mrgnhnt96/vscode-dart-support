@@ -382,7 +382,6 @@ export class Process {
     }
 
     const cwd = data.uri;
-
     const process = this.processes[cwd];
 
     if (process?.pid) {
