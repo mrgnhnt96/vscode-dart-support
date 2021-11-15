@@ -28,6 +28,7 @@
   - [ ] Via list
     - [ ] Can add & remove?
 - [ ] change the description of the tree item to the actual description of yaml
+- [ ] Add icon to open terminal if it exists
 - [ ] Add Quick Actions
   - [ ] Organize file (or sort deps only?)
   - [ ] Add Dependencies
